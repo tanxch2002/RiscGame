@@ -110,6 +110,14 @@ public class RiscServer {
             executeOrdersPhase();
             // 检查是否有人被淘汰或者出现赢家
             game.updatePlayerStatus();
+
+            // 向出局玩家发送淘汰信息
+            for (ClientHandler ch : clientHandlers) {
+                if (!game.getPlayer(ch.getPlayerID()).isAlive()) {
+                    ch.sendMessage("你已被淘汰！");
+                }
+            }
+
             if (game.hasWinner()) {
                 broadcastMessage("游戏结束！获胜者是：" + game.getWinner().getName() + "\n");
                 break;
