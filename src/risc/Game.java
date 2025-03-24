@@ -229,19 +229,35 @@ public class Game {
      * Initialize players, assign territories in some manner.
      */
     public void initPlayers(int numPlayers) {
+        // 创建玩家
         for (int i = 0; i < numPlayers; i++) {
             Player p = new Player(i, "Player" + (i + 1));
             players.add(p);
         }
-        // For minimal code: just divide the territories evenly in a round-robin
-        for (int i = 0; i < territories.size(); i++) {
-            Territory t = territories.get(i);
-            Player p = players.get(i % numPlayers);
-            t.setOwner(p);
-            t.setUnits(0); // start with 0, will place in initial phase
-            p.addTerritory(t);
+
+        // 计算每个玩家应获得的基本领土数量及余数
+        int totalTerritories = territories.size();
+        int baseCount = totalTerritories / numPlayers;  // 每个玩家至少获得的领土数量
+        int extra = totalTerritories % numPlayers;        // 前extra个玩家将多分配一个领土
+
+        int index = 0;
+        // 为每个玩家连续分配领土
+        for (Player p : players) {
+            // 如果还有余数，则该玩家获得额外的一个领土
+            int numForThisPlayer = baseCount + (extra > 0 ? 1 : 0);
+            if (extra > 0) {
+                extra--;
+            }
+            // 连续分配numForThisPlayer个领土给当前玩家
+            for (int j = 0; j < numForThisPlayer; j++) {
+                Territory t = territories.get(index++);
+                t.setOwner(p);
+                t.setUnits(0); // 初始单位数
+                p.addTerritory(t);
+            }
         }
     }
+
 
     public int getInitialUnits() {
         return initialUnitsPerPlayer;

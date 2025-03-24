@@ -132,11 +132,36 @@ public class RiscServer {
     /**
      * 初始分配兵力阶段（本示例里是自动分配，也可扩展为让玩家自己分配）
      */
+    /**
+     * 初始兵力分配阶段：让每位玩家在自己领土上手动分配初始单位。
+     */
     private void gamePhaseInitialPlacement() {
-        // 这里采用 Game 类的 distributeInitialUnits() 方法做简单均分
-        game.distributeInitialUnits();
-        broadcastMessage("初始兵力放置完成。\n当前地图：\n" + game.getMapState());
+        broadcastMessage("初始兵力分配阶段：每位玩家有 " + game.getInitialUnits() + " 个单位，请根据你的领土数量自行分配。");
+        List<Thread> threads = new ArrayList<>();
+
+        // 为每个存活玩家启动一个线程进行初始兵力分配
+        for (ClientHandler ch : clientHandlers) {
+            if (!game.getPlayer(ch.getPlayerID()).isAlive()) {
+                continue;
+            }
+            Thread t = new Thread(() -> {
+                ch.sendMessage("请为你的各个领土分配初始兵力。");
+                ch.collectInitialPlacement(game);
+            });
+            threads.add(t);
+            t.start();
+        }
+        // 等待所有玩家完成初始兵力分配
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        broadcastMessage("初始兵力分配完成。\n当前地图状态：\n" + game.getMapState());
     }
+
 
     /**
      * 命令下达阶段：让每位玩家输入 (M)ove, (A)ttack, (D)one
