@@ -31,7 +31,7 @@ public class RiscServer {
     public RiscServer(int desiredPlayers) {
         this.clientHandlers = new ArrayList<>();
         this.game = new Game();  // 这里的 Game() 内部可能会调用更复杂的地图配置，如 setupLargerMap()
-        this.game.setupDefaultMap();
+        this.game.setUpMap(desiredPlayers);
         this.desiredPlayers = desiredPlayers;
     }
 

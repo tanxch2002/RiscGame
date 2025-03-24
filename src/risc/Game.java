@@ -24,31 +24,26 @@ public class Game {
     }
 
     /**
-     * Creates a simple default map for demonstration:
-     *   - 3 territories total, each adjacent to each other.
+     * 构造六块土地的地图
      */
-    public void setupDefaultMap() {
-        // 清空原有 territories，避免和旧地图冲突
-        this.territories.clear();
-
-        // 示例：创建 7 个领地，名称可自定义
+    public void setupSixMap() {
+        territories.clear();
+        // 创建 6 个领地
         Territory t1 = new Territory("A");
         Territory t2 = new Territory("B");
         Territory t3 = new Territory("C");
         Territory t4 = new Territory("D");
         Territory t5 = new Territory("E");
         Territory t6 = new Territory("F");
-        Territory t7 = new Territory("G");
 
-        // 设置相邻关系（示例拓扑，可根据需要调整）
+        // 设置邻接关系（示例拓扑）
         // A 与 B、C 邻接
         t1.addNeighbor(t2);
         t1.addNeighbor(t3);
 
-        // B 与 A、D、G 邻接
+        // B 与 A、D 邻接
         t2.addNeighbor(t1);
         t2.addNeighbor(t4);
-        t2.addNeighbor(t7);
 
         // C 与 A、D、E 邻接
         t3.addNeighbor(t1);
@@ -60,22 +55,76 @@ public class Game {
         t4.addNeighbor(t3);
         t4.addNeighbor(t6);
 
-        // E 与 C、F、G 邻接
+        // E 与 C、F 邻接
         t5.addNeighbor(t3);
         t5.addNeighbor(t6);
-        t5.addNeighbor(t7);
 
-        // F 与 D、E、G 邻接
+        // F 与 D、E 邻接
         t6.addNeighbor(t4);
+        t6.addNeighbor(t5);
+
+        territories.add(t1);
+        territories.add(t2);
+        territories.add(t3);
+        territories.add(t4);
+        territories.add(t5);
+        territories.add(t6);
+    }
+
+    /**
+     * 构造八块土地的地图
+     */
+    public void setupEightMap() {
+        territories.clear();
+        // 创建 8 个领地
+        Territory t1 = new Territory("A");
+        Territory t2 = new Territory("B");
+        Territory t3 = new Territory("C");
+        Territory t4 = new Territory("D");
+        Territory t5 = new Territory("E");
+        Territory t6 = new Territory("F");
+        Territory t7 = new Territory("G");
+        Territory t8 = new Territory("H");
+
+        // 设置邻接关系（示例拓扑）
+        // A: B, C
+        t1.addNeighbor(t2);
+        t1.addNeighbor(t3);
+
+        // B: A, D, E
+        t2.addNeighbor(t1);
+        t2.addNeighbor(t4);
+        t2.addNeighbor(t5);
+
+        // C: A, F, G
+        t3.addNeighbor(t1);
+        t3.addNeighbor(t6);
+        t3.addNeighbor(t7);
+
+        // D: B, H
+        t4.addNeighbor(t2);
+        t4.addNeighbor(t8);
+
+        // E: B, F, H
+        t5.addNeighbor(t2);
+        t5.addNeighbor(t6);
+        t5.addNeighbor(t8);
+
+        // F: C, E, G
+        t6.addNeighbor(t3);
         t6.addNeighbor(t5);
         t6.addNeighbor(t7);
 
-        // G 与 B、E、F 邻接
-        t7.addNeighbor(t2);
-        t7.addNeighbor(t5);
+        // G: C, F, H
+        t7.addNeighbor(t3);
         t7.addNeighbor(t6);
+        t7.addNeighbor(t8);
 
-        // 加入到 Game 的 territories 列表
+        // H: D, E, G
+        t8.addNeighbor(t4);
+        t8.addNeighbor(t5);
+        t8.addNeighbor(t7);
+
         territories.add(t1);
         territories.add(t2);
         territories.add(t3);
@@ -83,9 +132,96 @@ public class Game {
         territories.add(t5);
         territories.add(t6);
         territories.add(t7);
+        territories.add(t8);
     }
 
+    /**
+     * 构造十块土地的地图
+     */
+    public void setupTenMap() {
+        territories.clear();
+        // 创建 10 个领地
+        Territory t1 = new Territory("A");
+        Territory t2 = new Territory("B");
+        Territory t3 = new Territory("C");
+        Territory t4 = new Territory("D");
+        Territory t5 = new Territory("E");
+        Territory t6 = new Territory("F");
+        Territory t7 = new Territory("G");
+        Territory t8 = new Territory("H");
+        Territory t9 = new Territory("I");
+        Territory t10 = new Territory("J");
 
+        // 设置邻接关系（示例拓扑）
+        // A: B, C
+        t1.addNeighbor(t2);
+        t1.addNeighbor(t3);
+
+        // B: A, D, E
+        t2.addNeighbor(t1);
+        t2.addNeighbor(t4);
+        t2.addNeighbor(t5);
+
+        // C: A, F, G
+        t3.addNeighbor(t1);
+        t3.addNeighbor(t6);
+        t3.addNeighbor(t7);
+
+        // D: B, H
+        t4.addNeighbor(t2);
+        t4.addNeighbor(t8);
+
+        // E: B, F, I
+        t5.addNeighbor(t2);
+        t5.addNeighbor(t6);
+        t5.addNeighbor(t9);
+
+        // F: C, E, G, J
+        t6.addNeighbor(t3);
+        t6.addNeighbor(t5);
+        t6.addNeighbor(t7);
+        t6.addNeighbor(t10);
+
+        // G: C, F, H
+        t7.addNeighbor(t3);
+        t7.addNeighbor(t6);
+        t7.addNeighbor(t8);
+
+        // H: D, G, I
+        t8.addNeighbor(t4);
+        t8.addNeighbor(t7);
+        t8.addNeighbor(t9);
+
+        // I: E, H, J
+        t9.addNeighbor(t5);
+        t9.addNeighbor(t8);
+        t9.addNeighbor(t10);
+
+        // J: F, I
+        t10.addNeighbor(t6);
+        t10.addNeighbor(t9);
+
+        territories.add(t1);
+        territories.add(t2);
+        territories.add(t3);
+        territories.add(t4);
+        territories.add(t5);
+        territories.add(t6);
+        territories.add(t7);
+        territories.add(t8);
+        territories.add(t9);
+        territories.add(t10);
+    }
+
+    public void setUpMap(int desiredPlayers){
+        if(desiredPlayers == 3){
+            setupSixMap();
+        } else if (desiredPlayers == 5) {
+            setupTenMap();
+        }else{
+            setupEightMap();
+        }
+    }
 
     /**
      * Initialize players, assign territories in some manner.
