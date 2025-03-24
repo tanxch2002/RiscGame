@@ -33,7 +33,7 @@ public class RiscClient {
                         System.out.println(serverMsg);
                     }
                 } catch (IOException e) {
-                    // connection closed
+                    // Connection closed
                 }
             });
             readerThread.start();
@@ -56,7 +56,6 @@ public class RiscClient {
         int port = 12345;
 
         try {
-            // Ask for the server IP address
             System.out.println("Please enter the server IP address (default: localhost): ");
             String input = userInput.readLine().trim();
             if (!input.isEmpty()) {

@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Each ClientHandler runs on its own thread to communicate with exactly one client.
  */
-public class    ClientHandler extends Thread {
+public class ClientHandler extends Thread {
     private final Socket socket;
     private final RiscServer server;
     private final int playerID;
@@ -30,7 +30,7 @@ public class    ClientHandler extends Thread {
             this.out = new PrintWriter(socket.getOutputStream(), true);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out.println("Welcome, Player " + (playerID + 1) + "!");
-            // You could wait for further messages from client here if needed.
+            // Additional client messages can be handled here if needed.
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -53,39 +53,19 @@ public class    ClientHandler extends Thread {
                 }
                 line = line.trim().toUpperCase();
                 if (line.startsWith("M")) {
-                    // parse move: e.g. "M sourceTerr destinationTerr numUnits"
-                    // For minimal code, assume user typed correct format
                     out.println("Enter format: sourceTerritory destinationTerritory numUnits");
                     String argsLine = in.readLine();
                     if (argsLine == null) break;
-                    String[] parts = argsLine.split("\\s+");
-                    if (parts.length == 3) {
-                        String src = parts[0];
-                        String dest = parts[1];
-                        int units = Integer.parseInt(parts[2]);
-                        game.addOrder(new MoveOrder(playerID, src, dest, units));
-                        out.println("Move order added: " + src + " -> " + dest + " (" + units + " units)");
-                    }
-                }
-                else if (line.startsWith("A")) {
-                    // parse attack: "A sourceTerr targetTerr numUnits"
+                    processMoveOrder(argsLine, game);
+                } else if (line.startsWith("A")) {
                     out.println("Enter format: sourceTerritory targetTerritory numUnits");
                     String argsLine = in.readLine();
                     if (argsLine == null) break;
-                    String[] parts = argsLine.split("\\s+");
-                    if (parts.length == 3) {
-                        String src = parts[0];
-                        String target = parts[1];
-                        int units = Integer.parseInt(parts[2]);
-                        game.addOrder(new AttackOrder(playerID, src, target, units));
-                        out.println("Attack order added: " + src + " => " + target + " (" + units + " units)");
-                    }
-                }
-                else if (line.startsWith("D")) {
+                    processAttackOrder(argsLine, game);
+                } else if (line.startsWith("D")) {
                     out.println("All orders done for this turn.");
                     break;
-                }
-                else {
+                } else {
                     out.println("Invalid command, please try again.");
                 }
             }
@@ -94,10 +74,44 @@ public class    ClientHandler extends Thread {
         }
     }
 
+    private void processMoveOrder(String argsLine, Game game) {
+        String[] parts = argsLine.split("\\s+");
+        if (parts.length == 3) {
+            try {
+                String src = parts[0];
+                String dest = parts[1];
+                int units = Integer.parseInt(parts[2]);
+                game.addOrder(new MoveOrder(playerID, src, dest, units));
+                sendMessage("Move order added: " + src + " -> " + dest + " (" + units + " units)");
+            } catch (NumberFormatException e) {
+                sendMessage("Invalid number format for move order.");
+            }
+        } else {
+            sendMessage("Invalid move order format.");
+        }
+    }
+
+    private void processAttackOrder(String argsLine, Game game) {
+        String[] parts = argsLine.split("\\s+");
+        if (parts.length == 3) {
+            try {
+                String src = parts[0];
+                String target = parts[1];
+                int units = Integer.parseInt(parts[2]);
+                game.addOrder(new AttackOrder(playerID, src, target, units));
+                sendMessage("Attack order added: " + src + " => " + target + " (" + units + " units)");
+            } catch (NumberFormatException e) {
+                sendMessage("Invalid number format for attack order.");
+            }
+        } else {
+            sendMessage("Invalid attack order format.");
+        }
+    }
+
     /**
-     * 收集玩家在初始阶段对各自领土的兵力分配。
-     * 每位玩家必须将 game.getInitialUnits() 的单位分配到所有领土上，
-     * 除最后一块自动接收剩余单位外，其余领土由玩家输入分配数量。
+     * Collect initial unit placement for each player's territories.
+     * Each player must allocate game.getInitialUnits() units among their territories,
+     * with the last territory receiving the remaining units automatically.
      */
     public void collectInitialPlacement(Game game) {
         int remainingUnits = game.getInitialUnits();
@@ -106,31 +120,31 @@ public class    ClientHandler extends Thread {
 
         for (int i = 0; i < territories.size(); i++) {
             Territory t = territories.get(i);
-            // 如果不是最后一个领土，则让玩家输入分配数量
+            // If not the last territory, ask player for input
             if (i < territories.size() - 1) {
-                sendMessage("你在领土 " + t.getName() + " 上分配的单位数量？（剩余单位：" + remainingUnits + "）");
+                sendMessage("How many units to allocate to territory " + t.getName() + "? (Remaining units: " + remainingUnits + ")");
                 try {
                     String input = in.readLine();
                     int units = Integer.parseInt(input.trim());
                     if (units < 0 || units > remainingUnits) {
-                        sendMessage("输入错误，请输入一个 0 到 " + remainingUnits + " 的数字。");
-                        i--; // 重复当前领土的输入
+                        sendMessage("Invalid input, please enter a number between 0 and " + remainingUnits + ".");
+                        i--; // Repeat the current territory input
                         continue;
                     }
                     t.setUnits(units);
                     remainingUnits -= units;
                 } catch (IOException | NumberFormatException e) {
-                    sendMessage("读取输入时出错，请重新输入。");
-                    i--; // 重复当前领土的输入
+                    sendMessage("Error reading input, please re-enter.");
+                    i--; // Repeat the current territory input
                 }
             } else {
-                // 最后一个领土自动分配剩余的单位
+                // Automatically allocate remaining units to the last territory
                 t.setUnits(remainingUnits);
-                sendMessage("领土 " + t.getName() + " 自动分配剩余的 " + remainingUnits + " 单位。");
+                sendMessage("Territory " + t.getName() + " automatically allocated the remaining " + remainingUnits + " units.");
                 remainingUnits = 0;
             }
         }
-        sendMessage("你在初始阶段的兵力分配完成！");
+        sendMessage("Initial unit placement completed!");
     }
 
     public void closeConnection() {
@@ -139,7 +153,7 @@ public class    ClientHandler extends Thread {
             out.close();
             socket.close();
         } catch (IOException e) {
-            // ignore
+            // Ignore exceptions on close.
         }
     }
 }
