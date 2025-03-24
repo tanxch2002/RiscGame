@@ -336,7 +336,70 @@ public class Game {
      * Execute all attack orders second.
      */
     public void executeAllAttackOrders() {
-        // Group by (target territory) => list of attackers
+        // Step 1: 预处理互相攻击的订单
+        // 收集所有合法的攻击订单
+        List<AttackOrder> mutualOrders = new ArrayList<>();
+        List<AttackOrder> allAttackOrders = new ArrayList<>();
+        for (Order o : allOrders) {
+            if (o instanceof AttackOrder) {
+                AttackOrder ao = (AttackOrder) o;
+                if (validateAttack(ao)) {
+                    allAttackOrders.add(ao);
+                }
+            }
+        }
+        // 用于记录已特殊处理的订单，避免重复处理
+        List<AttackOrder> processedOrders = new ArrayList<>();
+        for (AttackOrder ao : allAttackOrders) {
+            if (processedOrders.contains(ao))
+                continue;
+            // 在所有订单中查找与当前订单相反的订单
+            AttackOrder reverse = null;
+            for (AttackOrder other : allAttackOrders) {
+                if (other == ao)
+                    continue;
+                if (processedOrders.contains(other))
+                    continue;
+                if (other.getSourceName().equalsIgnoreCase(ao.getDestName())
+                        && other.getDestName().equalsIgnoreCase(ao.getSourceName())) {
+                    reverse = other;
+                    break;
+                }
+            }
+            if (reverse != null) {
+                Territory src = getTerritoryByName(ao.getSourceName());
+                Territory dest = getTerritoryByName(ao.getDestName());
+                if (src != null && dest != null) {
+                    // 判断是否为满兵出击：即攻击订单中派出的单位数与当前领地的驻军数相等
+                    if (src.getUnits() == ao.getNumUnits() && dest.getUnits() == reverse.getNumUnits()) {
+                        // 满足互相攻击的条件，特殊处理：
+                        // 对于来自 X->Y 的订单，将领地 Y 的所有权转给攻击方，并将部队数设为订单中的数量
+                        // 同理，对于来自 Y->X 的订单，将领地 X 的所有权转给对应的攻击方
+                        Player attackerForDest = getPlayer(ao.getPlayerID());
+                        Player attackerForSrc = getPlayer(reverse.getPlayerID());
+
+                        dest.setOwner(attackerForDest);
+                        dest.setUnits(ao.getNumUnits());
+                        attackerForDest.addTerritory(dest);
+
+                        src.setOwner(attackerForSrc);
+                        src.setUnits(reverse.getNumUnits());
+                        attackerForSrc.addTerritory(src);
+
+                        // 标记这对订单已处理
+                        processedOrders.add(ao);
+                        processedOrders.add(reverse);
+                        mutualOrders.add(ao);
+                        mutualOrders.add(reverse);
+                    }
+                }
+            }
+        }
+        // 将特殊处理的订单从总订单中移除，以免重复处理
+        allOrders.removeAll(mutualOrders);
+
+        // Step 2: 对剩余订单按原有逻辑处理
+        // 按目标领地分组
         Map<String, List<AttackOrder>> attacksByTarget = new HashMap<>();
         for (Order o : allOrders) {
             if (o instanceof AttackOrder) {
@@ -349,27 +412,26 @@ public class Game {
             }
         }
 
-        // For each territory, handle the attacks.
-        // If multiple players attack the same territory, we do them sequentially in random order.
+        // 对每个目标领地的攻击订单随机排序后依次处理
         for (String targetName : attacksByTarget.keySet()) {
             Territory target = getTerritoryByName(targetName);
             List<AttackOrder> attackers = attacksByTarget.get(targetName);
-            Collections.shuffle(attackers, rand); // randomize attack sequence
+            Collections.shuffle(attackers, rand); // 随机顺序
 
             for (AttackOrder ao : attackers) {
-                // retrieve fresh references in case territory changed owners
+                // 重新获取最新的领地状态
                 Territory src = getTerritoryByName(ao.getSourceName());
                 target = getTerritoryByName(targetName);
                 Player attacker = getPlayer(ao.getPlayerID());
 
                 if (src.getUnits() < ao.getNumUnits()) {
-                    // not enough units to actually attack
+                    // 攻击方单位不足则跳过
                     continue;
                 }
-                // remove attacker units from source
+                // 从来源领地扣除进攻部队
                 src.setUnits(src.getUnits() - ao.getNumUnits());
 
-                // if the defender has 0 units, attacker wins immediately
+                // 如果目标领地防守部队为 0 或防守方不再存活，则直接占领
                 if (target.getUnits() == 0 || !target.getOwner().isAlive()) {
                     target.setOwner(attacker);
                     target.setUnits(ao.getNumUnits());
@@ -377,51 +439,57 @@ public class Game {
                     continue;
                 }
 
-                // Resolve combat
+                // 战斗解决过程：双方单位轮流损失，直到一方耗尽
                 int attackerUnits = ao.getNumUnits();
                 int defenderUnits = target.getUnits();
                 Player defender = target.getOwner();
 
-                // attackerUnits vs. defenderUnits
                 while (attackerUnits > 0 && defenderUnits > 0) {
                     int attackRoll = DiceRoller.rollD20();
                     int defenseRoll = DiceRoller.rollD20();
                     if (attackRoll > defenseRoll) {
-                        // defender loses 1
                         defenderUnits--;
                     } else {
-                        // attacker loses 1 (tie or less)
                         attackerUnits--;
                     }
                 }
-                // If attacker has leftover units
+                // 战斗结束后的结果更新
                 if (attackerUnits > 0) {
-                    // attacker takes ownership
                     target.setOwner(attacker);
                     target.setUnits(attackerUnits);
                     defender.removeTerritory(target);
                     attacker.addTerritory(target);
                 } else {
-                    // defender remains
                     target.setUnits(defenderUnits);
                 }
             }
         }
     }
 
+    /**
+     * 验证攻击订单是否合法：
+     * 1. 检查来源与目标领地是否存在
+     * 2. 检查来源领地是否由发起攻击的玩家控制，且有足够部队
+     * 3. 检查来源与目标是否邻接
+     * 4. 确保不能攻击自己领地
+     */
     private boolean validateAttack(AttackOrder ao) {
         Territory src = getTerritoryByName(ao.getSourceName());
         Territory dest = getTerritoryByName(ao.getDestName());
         Player p = getPlayer(ao.getPlayerID());
-        if (src == null || dest == null) return false;
-        if (!src.getOwner().equals(p)) return false;
-        if (src.getUnits() < ao.getNumUnits()) return false;
-        // must be adjacent to attack
-        if (!src.getNeighbors().contains(dest)) return false;
-        // cannot attack your own territory
-        if (dest.getOwner().equals(p)) return false;
+        if (src == null || dest == null)
+            return false;
+        if (!src.getOwner().equals(p))
+            return false;
+        if (src.getUnits() < ao.getNumUnits())
+            return false;
+        if (!src.getNeighbors().contains(dest))
+            return false;
+        if (dest.getOwner().equals(p))
+            return false;
         return true;
     }
+
 
     /**
      * After all orders are done, add 1 unit per territory.
