@@ -1,6 +1,7 @@
 package risc;
 
 import java.util.*;
+import java.util.Collections;
 
 /**
  * The Game class holds the map, territories, players, and orders.
@@ -19,7 +20,8 @@ public class Game {
     public Game() {
         this.territories = new ArrayList<>();
         this.players = new ArrayList<>();
-        this.allOrders = new ArrayList<>();
+        // 使用线程安全的集合
+        this.allOrders = Collections.synchronizedList(new ArrayList<>());
         this.rand = new Random();
     }
 
@@ -264,8 +266,9 @@ public class Game {
 
     /**
      * Add a newly created Order to the queue.
+     * 使用 synchronized 关键字保证线程安全
      */
-    public void addOrder(Order order) {
+    public synchronized void addOrder(Order order) {
         // The server might do checks to ensure no duplication or nonsense, omitted for brevity
         allOrders.add(order);
     }

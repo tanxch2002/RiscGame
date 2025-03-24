@@ -104,12 +104,10 @@ public class RiscServer {
         // 进入主要游戏循环
         while (!game.hasWinner()) {
             broadcastMessage("\n=== 新回合开始 ===\n");
+
             issueOrdersPhase();
+
             executeOrdersPhase();
-
-            // 回合结束：给每个领地增加 1 个单位
-            game.addOneUnitToEachTerritory();
-
             // 检查是否有人被淘汰或者出现赢家
             game.updatePlayerStatus();
             if (game.hasWinner()) {
@@ -134,16 +132,30 @@ public class RiscServer {
 
     /**
      * 命令下达阶段：让每位玩家输入 (M)ove, (A)ttack, (D)one
+     * 通过为每个玩家启动独立线程，实现并发输入
      */
     private void issueOrdersPhase() {
         broadcastMessage("请输入指令：(M)ove, (A)ttack, (D)one。\n");
-        // 依次让存活玩家输入命令
+        List<Thread> threads = new ArrayList<>();
+        // 为每个存活玩家启动一个线程去收集命令
         for (ClientHandler ch : clientHandlers) {
             if (!game.getPlayer(ch.getPlayerID()).isAlive()) {
                 continue;
             }
-            ch.sendMessage("轮到你下达命令，请依次输入。\n");
-            ch.collectOrders(game);
+            Thread t = new Thread(() -> {
+                ch.sendMessage("轮到你下达命令，请依次输入。\n");
+                ch.collectOrders(game);
+            });
+            threads.add(t);
+            t.start();
+        }
+        // 等待所有玩家的命令收集完成
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -161,6 +173,9 @@ public class RiscServer {
 
         // 清空本回合的所有命令
         game.clearAllOrders();
+
+        // 回合结束：给每个领地增加 1 个单位
+        game.addOneUnitToEachTerritory();
 
         // 回合结束后打印地图信息
         broadcastMessage("本回合结束后的地图：\n" + game.getMapState());
@@ -186,7 +201,7 @@ public class RiscServer {
                 ch.sendMessage("连接即将关闭...\n");
                 ch.closeConnection();
             } catch (Exception e) {
-                // 忽略
+                // 忽略异常
             }
         }
     }
@@ -198,4 +213,3 @@ public class RiscServer {
         return this.game;
     }
 }
-
