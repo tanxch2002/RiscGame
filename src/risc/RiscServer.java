@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Iterator; // 引入 Iterator 用于安全移除
 
 /**
  * Minimal RISC Server, allowing 2 to 5 players.
@@ -91,9 +92,14 @@ public class RiscServer {
             executeOrdersPhase();
             game.updatePlayerStatus();
 
-            for (ClientHandler ch : clientHandlers) {
+            // 遍历所有客户端处理器，关闭已被淘汰玩家的连接，并从列表中移除
+            Iterator<ClientHandler> iterator = clientHandlers.iterator();
+            while (iterator.hasNext()) {
+                ClientHandler ch = iterator.next();
                 if (!game.getPlayer(ch.getPlayerID()).isAlive()) {
-                    ch.sendMessage("You have been eliminated!");
+                    ch.sendMessage("You have been eliminated! Your connection will now be closed.");
+                    ch.closeConnection();
+                    iterator.remove();
                 }
             }
 
