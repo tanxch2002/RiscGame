@@ -28,22 +28,64 @@ public class Game {
      *   - 3 territories total, each adjacent to each other.
      */
     public void setupDefaultMap() {
+        // 清空原有 territories，避免和旧地图冲突
+        this.territories.clear();
+
+        // 示例：创建 7 个领地，名称可自定义
         Territory t1 = new Territory("A");
         Territory t2 = new Territory("B");
         Territory t3 = new Territory("C");
+        Territory t4 = new Territory("D");
+        Territory t5 = new Territory("E");
+        Territory t6 = new Territory("F");
+        Territory t7 = new Territory("G");
 
-        // Make them all pairwise adjacent
+        // 设置相邻关系（示例拓扑，可根据需要调整）
+        // A 与 B、C 邻接
         t1.addNeighbor(t2);
-        t2.addNeighbor(t1);
-        t2.addNeighbor(t3);
-        t3.addNeighbor(t2);
         t1.addNeighbor(t3);
-        t3.addNeighbor(t1);
 
+        // B 与 A、D、G 邻接
+        t2.addNeighbor(t1);
+        t2.addNeighbor(t4);
+        t2.addNeighbor(t7);
+
+        // C 与 A、D、E 邻接
+        t3.addNeighbor(t1);
+        t3.addNeighbor(t4);
+        t3.addNeighbor(t5);
+
+        // D 与 B、C、F 邻接
+        t4.addNeighbor(t2);
+        t4.addNeighbor(t3);
+        t4.addNeighbor(t6);
+
+        // E 与 C、F、G 邻接
+        t5.addNeighbor(t3);
+        t5.addNeighbor(t6);
+        t5.addNeighbor(t7);
+
+        // F 与 D、E、G 邻接
+        t6.addNeighbor(t4);
+        t6.addNeighbor(t5);
+        t6.addNeighbor(t7);
+
+        // G 与 B、E、F 邻接
+        t7.addNeighbor(t2);
+        t7.addNeighbor(t5);
+        t7.addNeighbor(t6);
+
+        // 加入到 Game 的 territories 列表
         territories.add(t1);
         territories.add(t2);
         territories.add(t3);
+        territories.add(t4);
+        territories.add(t5);
+        territories.add(t6);
+        territories.add(t7);
     }
+
+
 
     /**
      * Initialize players, assign territories in some manner.

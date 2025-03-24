@@ -5,166 +5,197 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 /**
- * Minimal RISC Server.
- * Listens for new client connections, starts the game when all players have joined.
+ * Minimal RISC Server, allowing 2~5 players.
+ * Listens for new client connections, starts the game when the specified number of players have joined.
  */
 public class RiscServer {
-    public static final int PORT = 12345;   // example port
+    // 允许的最小玩家数和最大玩家数
     public static final int MIN_PLAYERS = 2;
-    public static final int MAX_PLAYERS = 2;
+    public static final int MAX_PLAYERS = 5;
+
+    // 服务器监听端口（可根据需要修改）
+    public static final int PORT = 12345;
 
     private final List<ClientHandler> clientHandlers;
     private final Game game;
 
-    public RiscServer() {
+    // 本局实际需要多少玩家（由管理员在服务器启动时指定）
+    private final int desiredPlayers;
+
+    /**
+     * 构造函数，传入本局期望的玩家数量
+     */
+    public RiscServer(int desiredPlayers) {
         this.clientHandlers = new ArrayList<>();
-        // You may create a default map, or wait until players connect and choose a map config
-        this.game = new Game();
-        // For demonstration, we'll just create some fixed territories and adjacency.
+        this.game = new Game();  // 这里的 Game() 内部可能会调用更复杂的地图配置，如 setupLargerMap()
         this.game.setupDefaultMap();
+        this.desiredPlayers = desiredPlayers;
     }
 
+    /**
+     * main 方法：启动服务器前，先让用户在控制台输入需要多少玩家
+     */
     public static void main(String[] args) {
-        RiscServer server = new RiscServer();
+        Scanner sc = new Scanner(System.in);
+        int numPlayers = 0;
+        // 循环直到输入合法的玩家数量（2～5）
+        while (numPlayers < MIN_PLAYERS || numPlayers > MAX_PLAYERS) {
+            System.out.println("请输入本局游戏的玩家数量 (" + MIN_PLAYERS + "~" + MAX_PLAYERS + ")：");
+            String line = sc.nextLine().trim();
+            try {
+                numPlayers = Integer.parseInt(line);
+            } catch (NumberFormatException e) {
+                // 如果输入无法转为数字，就重置为 0 并继续
+                numPlayers = 0;
+            }
+        }
+        sc.close();
+
+        // 创建并启动服务器
+        RiscServer server = new RiscServer(numPlayers);
         server.runServer();
     }
 
+    /**
+     * 主体逻辑：等待玩家连接，直到达成 desiredPlayers 人数，然后启动游戏流程
+     */
     private void runServer() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Server started. Listening on port " + PORT);
-            while (clientHandlers.size() < MAX_PLAYERS) {
-                System.out.println("Waiting for clients...");
+            System.out.println("服务器已启动，端口 " + PORT);
+            System.out.println("本局需要 " + this.desiredPlayers + " 位玩家连接才能开始游戏。");
+
+            while (clientHandlers.size() < desiredPlayers) {
+                System.out.println("等待玩家连接中...");
                 Socket socket = serverSocket.accept();
-                System.out.println("Client connected: " + socket.getInetAddress());
+                System.out.println("玩家已连接: " + socket.getInetAddress());
 
                 ClientHandler handler = new ClientHandler(socket, this, clientHandlers.size());
                 clientHandlers.add(handler);
                 handler.start();
 
-                // If we have at least the minimum required players, we can start the game
-                if (clientHandlers.size() == MIN_PLAYERS) {
-                    // Optionally wait a few seconds for more players or just start
-                    System.out.println("Minimum players reached. You can start the game now or wait for more...");
-                }
-                if (clientHandlers.size() == MAX_PLAYERS) {
-                    System.out.println("Max players reached.");
+                // 达到指定玩家数量后退出等待循环
+                if (clientHandlers.size() == desiredPlayers) {
+                    System.out.println("达到指定玩家人数 " + desiredPlayers + "，开始游戏。");
                     break;
                 }
             }
-            // Start the game logic once we decide we have enough players
+            // 开始游戏
             startGame();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     /**
-     * Once all players are connected, set up the game and run the main loop.
+     * 一旦所有玩家都连接，初始化游戏并开始循环处理
      */
     private void startGame() {
-        // Initialize the game with the number of players
+        // 初始化游戏，注册玩家
         game.initPlayers(clientHandlers.size());
 
-        // Step 1: initial unit placement (all players do it simultaneously)
-        broadcastMessage("All players: Place your initial units. You each have "
-                + game.getInitialUnits() + " units total.\n");
+        // 初始阶段：给每个玩家分配初始单位
+        broadcastMessage("所有玩家开始放置初始兵力。每人有 " + game.getInitialUnits() + " 点可分配。\n");
         gamePhaseInitialPlacement();
 
-        // Step 2: main game loop
+        // 进入主要游戏循环
         while (!game.hasWinner()) {
-            broadcastMessage("\n=== New Turn ===\n");
+            broadcastMessage("\n=== 新回合开始 ===\n");
             issueOrdersPhase();
             executeOrdersPhase();
 
-            // end of turn: add 1 unit to each territory
+            // 回合结束：给每个领地增加 1 个单位
             game.addOneUnitToEachTerritory();
 
-            // check defeat/win conditions
+            // 检查是否有人被淘汰或者出现赢家
             game.updatePlayerStatus();
             if (game.hasWinner()) {
-                broadcastMessage("We have a winner: " + game.getWinner().getName() + "\n");
+                broadcastMessage("游戏结束！获胜者是：" + game.getWinner().getName() + "\n");
                 break;
             }
         }
-        broadcastMessage("Game Over.\n");
-        // optionally: close all client connections, or allow a new game
+
+        // 可选：结束后做一些清理操作
+        broadcastMessage("游戏已结束。\n");
         closeAllConnections();
     }
 
     /**
-     * Ask each client to place initial units.
-     * We assume the server receives how many units each territory gets,
-     * and the server enforces correctness.
+     * 初始分配兵力阶段（本示例里是自动分配，也可扩展为让玩家自己分配）
      */
     private void gamePhaseInitialPlacement() {
-        // In a real game, you'd gather each player's distribution,
-        // but for minimal code, we'll simply assign them evenly or forcibly
-        // distribute them for demonstration:
+        // 这里采用 Game 类的 distributeInitialUnits() 方法做简单均分
         game.distributeInitialUnits();
-        broadcastMessage("All initial units placed.\nCurrent Map:\n" + game.getMapState());
+        broadcastMessage("初始兵力放置完成。\n当前地图：\n" + game.getMapState());
     }
 
     /**
-     * Issue orders phase: each player sends in all their orders
-     * (move, attack) until they type "D" (done).
+     * 命令下达阶段：让每位玩家输入 (M)ove, (A)ttack, (D)one
      */
     private void issueOrdersPhase() {
-        broadcastMessage("Enter your orders: (M)ove, (A)ttack, (D)one.\n");
+        broadcastMessage("请输入指令：(M)ove, (A)ttack, (D)one。\n");
+        // 依次让存活玩家输入命令
         for (ClientHandler ch : clientHandlers) {
-            // If the player's already lost, skip
             if (!game.getPlayer(ch.getPlayerID()).isAlive()) {
                 continue;
             }
-            // Request orders from that player
-            ch.sendMessage("Your turn to enter orders. Type them line by line.\n");
+            ch.sendMessage("轮到你下达命令，请依次输入。\n");
             ch.collectOrders(game);
         }
     }
 
     /**
-     * Execute the orders phase: moves first, then attacks.
+     * 执行命令阶段：先执行移动，再执行攻击
      */
     private void executeOrdersPhase() {
-        // Move orders first
-        broadcastMessage("\nExecuting Move Orders...\n");
+        // 先执行移动命令
+        broadcastMessage("\n执行移动命令...\n");
         game.executeAllMoveOrders();
 
-        // Attack orders second
-        broadcastMessage("\nExecuting Attack Orders...\n");
+        // 再执行攻击命令
+        broadcastMessage("\n执行攻击命令...\n");
         game.executeAllAttackOrders();
 
-        // Clear all orders
+        // 清空本回合的所有命令
         game.clearAllOrders();
 
-        // Show updated map
-        broadcastMessage("Map after this turn:\n" + game.getMapState());
+        // 回合结束后打印地图信息
+        broadcastMessage("本回合结束后的地图：\n" + game.getMapState());
     }
 
     /**
-     * Utility method to broadcast a message to all clients.
+     * 广播消息给所有玩家
      */
     public void broadcastMessage(String msg) {
         for (ClientHandler ch : clientHandlers) {
             ch.sendMessage(msg);
         }
-        // Also log to server console
+        // 同时在服务器端输出日志
         System.out.println("Broadcast: " + msg);
     }
 
+    /**
+     * 关闭与所有玩家的连接
+     */
     public void closeAllConnections() {
         for (ClientHandler ch : clientHandlers) {
             try {
-                ch.sendMessage("Closing connection...\n");
+                ch.sendMessage("连接即将关闭...\n");
                 ch.closeConnection();
             } catch (Exception e) {
-                // ignore
+                // 忽略
             }
         }
     }
 
+    /**
+     * 向外暴露当前游戏对象
+     */
     public Game getGame() {
         return this.game;
     }
 }
+
