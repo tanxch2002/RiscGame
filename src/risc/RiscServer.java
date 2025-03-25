@@ -55,7 +55,7 @@ public class RiscServer {
     /**
      * Main logic: wait for players to connect until desiredPlayers have joined, then start the game.
      */
-    private void runServer() {
+    public void runServer() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server started on port " + PORT);
             System.out.println("Waiting for " + this.desiredPlayers + " players to connect...");
