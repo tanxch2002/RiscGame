@@ -8,15 +8,15 @@ class MapBuilderTest {
 
     @Test
     void buildMap() {
-        // 测试 3 人地图：6 块地
+        // Test map for 3 players: should have 6 territories
         List<Territory> map3 = MapBuilder.buildMap(3);
         assertEquals(6, map3.size());
 
-        // 测试 5 人地图：10 块地
+        // Test map for 5 players: should have 10 territories
         List<Territory> map5 = MapBuilder.buildMap(5);
         assertEquals(10, map5.size());
 
-        // 测试其它情况（返回 8 块地）
+        // Test other cases (should return 8 territories)
         List<Territory> map4 = MapBuilder.buildMap(4);
         assertEquals(8, map4.size());
     }

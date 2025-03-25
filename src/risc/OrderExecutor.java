@@ -3,7 +3,7 @@ package risc;
 import java.util.*;
 
 /**
- * Handles the execution of move and attack orders.
+ * Handles the execution of move and attack orders in the game.
  */
 public class OrderExecutor {
     private final Game game;
@@ -12,6 +12,9 @@ public class OrderExecutor {
         this.game = game;
     }
 
+    /**
+     * Executes all move orders.
+     */
     public void executeMoveOrders() {
         List<MoveOrder> moves = new ArrayList<>();
         for (Order o : game.getAllOrders()) {
@@ -30,6 +33,9 @@ public class OrderExecutor {
         }
     }
 
+    /**
+     * Executes all attack orders.
+     */
     public void executeAttackOrders() {
         List<AttackOrder> mutualOrders = new ArrayList<>();
         List<AttackOrder> allAttackOrders = new ArrayList<>();
@@ -141,6 +147,9 @@ public class OrderExecutor {
         }
     }
 
+    /**
+     * Validates a move order.
+     */
     private boolean validateMove(MoveOrder move) {
         Territory src = game.getTerritoryByName(move.getSourceName());
         Territory dest = game.getTerritoryByName(move.getDestName());
@@ -151,6 +160,9 @@ public class OrderExecutor {
         return canReach(src, dest, p);
     }
 
+    /**
+     * Checks if a territory can be reached from another territory.
+     */
     private boolean canReach(Territory src, Territory dest, Player p) {
         Set<Territory> visited = new HashSet<>();
         Queue<Territory> queue = new LinkedList<>();
@@ -171,6 +183,9 @@ public class OrderExecutor {
         return false;
     }
 
+    /**
+     * Validates an attack order.
+     */
     private boolean validateAttack(AttackOrder ao) {
         Territory src = game.getTerritoryByName(ao.getSourceName());
         Territory dest = game.getTerritoryByName(ao.getDestName());

@@ -21,29 +21,29 @@ class RiscServerTest {
 
     @BeforeEach
     void setUp() {
-        // 备份原本的 System.out / System.in，以便后面还原
+        // Backup the original System.out and System.in to restore later
         originalOut = System.out;
         originalIn = System.in;
 
-        // 捕获 System.out 的输出
+        // Capture the output of System.out
         testOut = new ByteArrayOutputStream();
         System.setOut(new PrintStream(testOut));
 
-        // 直接构造 RiscServer，指定玩家数为 2
-        // 避免在 main 中等待用户输入玩家数
+        // Directly construct a RiscServer with 2 players
+        // Avoid waiting for user input in the main method
         serverUnderTest = new RiscServer(2);
 
-        // 启动 server 的主逻辑(runServer)，它会阻塞等待2个客户端
+        // Start the server's main logic (runServer), which will block waiting for 2 clients
         serverThread = new Thread(() -> serverUnderTest.runServer());
         serverThread.start();
     }
 
     @AfterEach
     void tearDown() throws InterruptedException {
-        // 测试结束后，关掉连接、还原 System.out / System.in
+        // After the test, close connections and restore System.out and System.in
         serverUnderTest.closeAllConnections();
         serverThread.interrupt();
-        serverThread.join(500);  // 最多等0.5秒让线程结束
+        serverThread.join(500);  // Wait up to 0.5 seconds for the thread to terminate
 
         System.setOut(originalOut);
         System.setIn(originalIn);
@@ -51,24 +51,24 @@ class RiscServerTest {
 
     @Test
     void testLocalInteraction() throws Exception {
-        // 这里我们需要“模拟”两个玩家，以满足服务器对2个连接的需求
-        // 每个玩家都在一个线程里，连接服务器后读取欢迎信息并发送一些简单指令
+        // We need to "simulate" two players to meet the server's requirement for 2 connections
+        // Each player runs in a separate thread, connects to the server, reads the welcome message, and sends some simple commands
 
         Thread client1 = new Thread(() -> {
             try (Socket socket = new Socket("localhost", RiscServer.PORT);
                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
-                // 读取服务器发来的欢迎语，比如“Welcome, Player 1!”
+                // Read the welcome message from the server, such as "Welcome, Player 1!"
                 String welcome = in.readLine();
                 System.out.println("Client1 received: " + welcome);
 
-                // 服务器会在准备阶段让玩家进行初始分配或发命令
-                // 简化起见，直接发“D”表示Done
+                // The server will prompt players to make initial allocations or send commands
+                // For simplicity, just send "D" to indicate Done
                 out.println("D");
 
-                // 之后可能出现“All orders done for this turn.”等提示
-                // 读一行就算结束
+                // The server may then send messages like "All orders done for this turn."
+                // Read one line and consider it done
                 String serverMsg = in.readLine();
                 System.out.println("Client1 next message: " + serverMsg);
 
@@ -85,7 +85,7 @@ class RiscServerTest {
                 String welcome = in.readLine();
                 System.out.println("Client2 received: " + welcome);
 
-                // 同理，直接发“D”
+                // Similarly, just send "D"
                 out.println("D");
 
                 String serverMsg = in.readLine();
@@ -96,27 +96,27 @@ class RiscServerTest {
             }
         });
 
-        // 启动两个“客户端”
+        // Start the two "clients"
         client1.start();
         client2.start();
 
-        // 等待客户端执行完毕
+        // Wait for the clients to finish
         client1.join();
         client2.join();
 
-        // 此时，服务器应该已经接收到2个连接，并处理了最简单的一次命令输入(Done)
-        // 如果还想测试更多命令（Move/Attack/初始分配），需要在客户端里模拟发送完整命令流程
+        // At this point, the server should have received 2 connections and processed the simplest command input (Done)
+        // If you want to test more commands (Move/Attack/initial allocation), you need to simulate sending complete command flows in the clients
 
-        // 打印服务器侧记录的日志
+        // Print the logs captured by the server
         String serverOutput = testOut.toString(StandardCharsets.UTF_8);
         System.out.println("Server captured output: \n" + serverOutput);
 
-        // 做一些简单断言，确认服务器启动成功并广播了消息等
+        // Make some simple assertions to confirm the server started successfully and broadcasted messages
         assertTrue(serverOutput.contains("Server started on port 12345"));
         assertTrue(serverOutput.contains("Desired player count (2) reached, starting game."));
     }
 
-    // 其余你之前的测试方法也可以保留，比如：
+    // Other previous test methods can be retained, such as:
     @Test
     void testBroadcastMessage() {
         serverUnderTest.broadcastMessage("Hello");

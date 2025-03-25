@@ -8,11 +8,10 @@ class GameTest {
     @Test
     void setUpMap() {
         Game g = new Game();
-        g.setUpMap(3); // 构建 6 块地
+        g.setUpMap(3); // Set up 6 territories
         Territory tA = g.getTerritoryByName("A");
         assertNotNull(tA);
-        // 简单验证地名
-        assertNull(g.getTerritoryByName("Z")); // 不存在
+        assertNull(g.getTerritoryByName("Z")); // Non-existent territory
     }
 
     @Test
@@ -20,7 +19,6 @@ class GameTest {
         Game g = new Game();
         g.setUpMap(3);
         g.initPlayers(3);
-        // 这里验证玩家数量和名称
         assertEquals("Player1", g.getPlayer(0).getName());
         assertEquals("Player2", g.getPlayer(1).getName());
         assertEquals("Player3", g.getPlayer(2).getName());
@@ -37,10 +35,8 @@ class GameTest {
         Game g = new Game();
         g.setUpMap(2);
         g.initPlayers(2);
-        // 不同玩家
         g.distributeInitialUnits();
-        // 没有异常就说明分配结束
-        assertTrue(true);
+        assertTrue(true); // No exception means distribution is complete
     }
 
     @Test
@@ -62,7 +58,6 @@ class GameTest {
         Territory tB = p0.getTerritories().get(1);
         tA.setUnits(10);
 
-        // 添加 MoveOrder
         g.addOrder(new MoveOrder(0, tA.getName(), tB.getName(), 5));
         g.executeAllMoveOrders();
         assertEquals(5, tA.getUnits());
@@ -82,12 +77,9 @@ class GameTest {
         tA.setUnits(10);
         tB.setUnits(5);
 
-        // 添加 AttackOrder
         g.addOrder(new AttackOrder(0, tA.getName(), tB.getName(), 4));
         g.executeAllAttackOrders();
-        // 攻击结果有随机成分，主要保证不抛异常，同时覆盖代码
-        // 只要执行到了就可以了
-        assertTrue(tA.getUnits() >= 6); // 因为用了 4 个单位去攻打
+        assertTrue(tA.getUnits() >= 6); // Since 4 units were used for attack
     }
 
     @Test
@@ -120,7 +112,6 @@ class GameTest {
             assertEquals(3, t.getUnits());
         }
     }
-
 
     @Test
     void hasWinner() {
@@ -169,6 +160,6 @@ class GameTest {
         g.setUpMap(2);
         g.initPlayers(2);
         String mapState = g.getMapState();
-        assertTrue(mapState.contains("A(")); // 简单断言字符串包含
+        assertTrue(mapState.contains("A(")); // Assert that the string contains "A("
     }
 }

@@ -16,14 +16,14 @@ class RiscClientTest {
 
     @BeforeEach
     void setUp() {
-        // 准备捕获测试期间的 System.out
+        // Prepare to capture System.out during the test
         testOut = new ByteArrayOutputStream();
         System.setOut(new PrintStream(testOut));
     }
 
     @AfterEach
     void tearDown() {
-        // 还原 System.in / System.out
+        // Restore System.in and System.out
         System.setIn(originalIn);
         System.setOut(originalOut);
     }
@@ -36,41 +36,41 @@ class RiscClientTest {
 
     @Test
     void testRunClient_NoServerRunning() {
-        // 这里不会真正去连上服务器，所以会抛出 IOException
-        // 但是能覆盖到 try 块，以及因为 Connection refused 进入 catch 块
+        // This will not actually connect to a server, so an IOException will be thrown.
+        // However, it covers the try block and the catch block due to "Connection refused".
         RiscClient client = new RiscClient("localhost", 12345);
         client.runClient();
         String output = testOut.toString();
-        // 我们只要不抛异常即可，或者可以断言一些打印输出
+        // We just need to ensure no exception is thrown, or we can assert some printed output.
         // assertTrue(output.contains("Connection refused"));
         assertTrue(true);
     }
 
     @Test
     void testMain_NoUserInput() {
-        // 模拟用户按 Enter，跳过输入 IP 与端口的情况
+        // Simulate the user pressing Enter to skip entering IP and port.
         String simulatedUserInput = "\n\n";
         System.setIn(new ByteArrayInputStream(simulatedUserInput.getBytes()));
 
-        // 调用 main 方法，不传任何命令行参数
+        // Call the main method without any command-line arguments.
         RiscClient.main(new String[]{});
 
         String output = testOut.toString();
-        // 根据 main 中的逻辑，会提示输入 IP 和端口
-        // 这里可自行断言是否包含特定字符串
+        // According to the logic in main, it will prompt for IP and port.
+        // You can assert whether specific strings are included.
         assertTrue(output.contains("Please enter the server IP address"));
         assertTrue(output.contains("Please enter the port number"));
     }
 
     @Test
     void testMain_WithUserInput() {
-        // 模拟用户输入 IP="127.0.0.1" 和端口="9999"
+        // Simulate the user entering IP="127.0.0.1" and port="9999".
         String simulatedUserInput = "127.0.0.1\n9999\n";
         System.setIn(new ByteArrayInputStream(simulatedUserInput.getBytes()));
 
         RiscClient.main(new String[]{});
         String output = testOut.toString();
-        // 检查输出中是否出现正确提示
+        // Check if the output contains the correct prompts.
         assertTrue(output.contains("Please enter the server IP address"));
         assertTrue(output.contains("Please enter the port number"));
     }
