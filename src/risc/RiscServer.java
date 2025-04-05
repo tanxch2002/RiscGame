@@ -81,7 +81,7 @@ public class RiscServer {
     /**
      * Once all players have connected, initialize the game and start the main loop.
      */
-    private void startGame() {
+    public void startGame() {
         game.initPlayers(clientHandlers.size());
         broadcastMessage("All players begin initial unit placement. Each player has " + game.getInitialUnits() + " units to allocate.\n");
         gamePhaseInitialPlacement();
@@ -210,4 +210,9 @@ public class RiscServer {
     public Game getGame() {
         return this.game;
     }
+
+    public List<ClientHandler> getClientHandlers() {
+        return clientHandlers;
+    }
+
 }
