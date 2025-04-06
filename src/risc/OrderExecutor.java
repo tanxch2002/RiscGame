@@ -32,31 +32,37 @@ public class OrderExecutor {
         }
         for (MoveOrder m : moves) {
             if (!validateMove(m)) {
+                // 验证不通过就跳过
                 continue;
             }
             Player p = game.getPlayer(m.getPlayerID());
             Territory src = game.getTerritoryByName(m.getSourceName());
             Territory dest = game.getTerritoryByName(m.getDestName());
             int units = m.getNumUnits();
+            int level = m.getLevel();
 
-            // 计算最短路径(只走自己的领土)，cost = sum(size)*units
+            // 计算移动的食物费用，示例= sumOfPathSizes * units
             int pathCost = findMinPathSizeSum(src, dest, p);
-            if (pathCost < 0) continue; // 不可达
+            if (pathCost < 0) {
+                // 不可达，跳过
+                continue;
+            }
             int foodCost = pathCost * units;
             if (!p.spendFood(foodCost)) {
-                // 不够则跳过
+                // 食物不够，跳过
                 continue;
             }
 
-            // 真正执行移动
-            // 这里先假设全部是level=0的移动，你可以扩展为玩家指定移动哪些等级单位
-            // 例子写死：移动numUnits全是等级0
-            if (!src.removeUnits(0, units)) {
+            // 扣除源领土对应等级单位
+            if (!src.removeUnits(level, units)) {
+                // 不足则跳过
                 continue;
             }
-            dest.addUnits(0, units);
+            // 在目标领土增加对应等级单位
+            dest.addUnits(level, units);
         }
     }
+
 
     private boolean validateMove(MoveOrder m) {
         Player p = game.getPlayer(m.getPlayerID());
@@ -64,10 +70,12 @@ public class OrderExecutor {
         Territory dest = game.getTerritoryByName(m.getDestName());
         if (src == null || dest == null) return false;
         if (src.getOwner() != p || dest.getOwner() != p) return false;
-        // src中有没有足够单位(这里也写死等级0)
-        int have = src.getUnitMap().getOrDefault(0, 0);
+
+        // 检查源领土是否有足够 m.getLevel() 的单位
+        int have = src.getUnitMap().getOrDefault(m.getLevel(), 0);
         return have >= m.getNumUnits();
     }
+
 
     /**
      * BFS求最小路径之和(只经过p拥有的领土)，返回所有领土的size之和。
@@ -108,7 +116,7 @@ public class OrderExecutor {
         List<AttackOrder> attacks = new ArrayList<>();
         for (Order o : game.getAllOrders()) {
             if (o instanceof AttackOrder) {
-                attacks.add((AttackOrder)o);
+                attacks.add((AttackOrder) o);
             }
         }
         for (AttackOrder ao : attacks) {
@@ -119,19 +127,22 @@ public class OrderExecutor {
             Territory src = game.getTerritoryByName(ao.getSourceName());
             Territory dest = game.getTerritoryByName(ao.getDestName());
             int units = ao.getNumUnits();
+            int level = ao.getLevel(); // 使用攻击指令中的等级
+
             // 攻击花费 = units * 1 食物
             int foodCost = units;
             if (!attacker.spendFood(foodCost)) {
                 continue;
             }
-            // 从src删除(假设全是等级0...)
-            if (!src.removeUnits(0, units)) {
+            // 从源领土删除对应等级的单位
+            if (!src.removeUnits(level, units)) {
                 continue;
             }
-            // 进行战斗结算
-            resolveCombat(dest, attacker, 0, units);
+            // 调用新的resolveCombat方法，传入对应等级和单位数量
+            resolveCombat(dest, attacker, level, units);
         }
     }
+
 
     private boolean validateAttack(AttackOrder ao) {
         Player p = game.getPlayer(ao.getPlayerID());
@@ -145,7 +156,7 @@ public class OrderExecutor {
         return have >= ao.getNumUnits();
     }
 
-    // 新的战斗机制（示例：只考虑攻击方的units都是同一等级）
+    // 新的战斗机制
     private void resolveCombat(Territory dest, Player attacker, int attackingLevel, int attackingCount) {
         Player defender = dest.getOwner();
         // 收集防守方所有单位
@@ -154,35 +165,56 @@ public class OrderExecutor {
         List<UnitInfo> attUnits = new ArrayList<>();
         attUnits.add(new UnitInfo(attackingLevel, UNIT_BONUS[attackingLevel], attackingCount));
 
-        // 先按攻击方bonus降序，再按防方bonus升序对战，再换过来 (简化实现略)
-        // 这里仅示例一个简单的“随机配对”流程
+        // 战斗回合：交替进行两种配对方式
         while (!attUnits.isEmpty() && !defUnits.isEmpty()) {
-            UnitInfo a = attUnits.get(0);
-            UnitInfo d = defUnits.get(0);
-
-            int attackRoll = DiceRoller.rollD20() + a.bonus;
-            int defenseRoll = DiceRoller.rollD20() + d.bonus;
-            if (attackRoll > defenseRoll) {
-                // 防守死1
-                d.count--;
-                if (d.count <= 0) {
-                    defUnits.remove(0);
+            // 第一对：进攻方最高加值单位 vs 防守方最低加值单位
+            UnitInfo attackerHighest = getHighestBonus(attUnits);
+            UnitInfo defenderLowest = getLowestBonus(defUnits);
+            if (attackerHighest != null && defenderLowest != null) {
+                int attackRoll = DiceRoller.rollD20() + attackerHighest.bonus;
+                int defenseRoll = DiceRoller.rollD20() + defenderLowest.bonus;
+                if (attackRoll > defenseRoll) {
+                    // 防守方损失1个单位
+                    defenderLowest.count--;
+                    if (defenderLowest.count <= 0) {
+                        defUnits.remove(defenderLowest);
+                    }
+                } else {
+                    // 平局或防守胜，进攻方损失1个单位
+                    attackerHighest.count--;
+                    if (attackerHighest.count <= 0) {
+                        attUnits.remove(attackerHighest);
+                    }
                 }
-            } else {
-                // 平局/防守大时 攻击死1
-                a.count--;
-                if (a.count <= 0) {
-                    attUnits.remove(0);
+            }
+            // 检查是否有一方已经全部损失
+            if (attUnits.isEmpty() || defUnits.isEmpty()) break;
+
+            // 第二对：进攻方最低加值单位 vs 防守方最高加值单位
+            UnitInfo attackerLowest = getLowestBonus(attUnits);
+            UnitInfo defenderHighest = getHighestBonus(defUnits);
+            if (attackerLowest != null && defenderHighest != null) {
+                int attackRoll = DiceRoller.rollD20() + attackerLowest.bonus;
+                int defenseRoll = DiceRoller.rollD20() + defenderHighest.bonus;
+                if (attackRoll > defenseRoll) {
+                    defenderHighest.count--;
+                    if (defenderHighest.count <= 0) {
+                        defUnits.remove(defenderHighest);
+                    }
+                } else {
+                    attackerLowest.count--;
+                    if (attackerLowest.count <= 0) {
+                        attUnits.remove(attackerLowest);
+                    }
                 }
             }
         }
-        // 战斗结束
+
+        // 战斗结束：根据剩余单位判断胜负
         if (defUnits.isEmpty()) {
-            // 攻击方占领
+            // 攻击方胜利，领土占领
             dest.setOwner(attacker);
-            // 清空防守单位
             dest.getUnitMap().clear();
-            // 剩余进攻方单位放入领土
             for (UnitInfo info : attUnits) {
                 if (info.count > 0) {
                     dest.addUnits(info.level, info.count);
@@ -191,8 +223,7 @@ public class OrderExecutor {
             defender.removeTerritory(dest);
             attacker.addTerritory(dest);
         } else {
-            // 防守成功
-            // 更新territory单位为剩余defUnits
+            // 防守方胜利
             dest.getUnitMap().clear();
             for (UnitInfo info : defUnits) {
                 if (info.count > 0) {
@@ -201,6 +232,29 @@ public class OrderExecutor {
             }
         }
     }
+
+    // 辅助方法：查找列表中战斗加值最高的单位
+    private UnitInfo getHighestBonus(List<UnitInfo> list) {
+        UnitInfo highest = null;
+        for (UnitInfo info : list) {
+            if (highest == null || info.bonus > highest.bonus) {
+                highest = info;
+            }
+        }
+        return highest;
+    }
+
+    // 辅助方法：查找列表中战斗加值最低的单位
+    private UnitInfo getLowestBonus(List<UnitInfo> list) {
+        UnitInfo lowest = null;
+        for (UnitInfo info : list) {
+            if (lowest == null || info.bonus < lowest.bonus) {
+                lowest = info;
+            }
+        }
+        return lowest;
+    }
+
 
     private List<UnitInfo> gatherUnitsFromTerritory(Territory t) {
         List<UnitInfo> list = new ArrayList<>();

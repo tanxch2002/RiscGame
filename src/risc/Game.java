@@ -196,14 +196,38 @@ public class Game {
      */
     public String getMapState() {
         StringBuilder sb = new StringBuilder();
+        sb.append("===== Current Map State =====\n");
         for (Territory t : territories) {
-            sb.append(String.format("%s(%s): %d units, size=%d, neighbors: %s\n",
-                    t.getName(),
-                    (t.getOwner() == null ? "None" : t.getOwner().getName()),
-                    t.getTotalUnits(),
-                    t.getSize(),
-                    t.neighborsString()));
+            String owner = (t.getOwner() == null ? "None" : t.getOwner().getName());
+
+            // 收集并排序每个等级对应的单位数量（只是为了输出时更有顺序）
+            List<Integer> sortedLevels = new ArrayList<>(t.getUnitMap().keySet());
+            Collections.sort(sortedLevels);
+
+            StringBuilder unitsDetail = new StringBuilder();
+            if (sortedLevels.isEmpty()) {
+                unitsDetail.append("No units");
+            } else {
+                for (Integer level : sortedLevels) {
+                    int count = t.getUnitMap().get(level);
+                    unitsDetail.append("Level ").append(level)
+                            .append(": ").append(count).append(" units; ");
+                }
+                // 去掉末尾多余的分号空格
+                // 例如 "Level 0: 5 units; Level 1: 2 units; " -> "Level 0: 5 units; Level 1: 2 units"
+                if (unitsDetail.length() > 2) {
+                    unitsDetail.setLength(unitsDetail.length() - 2);
+                }
+            }
+
+            sb.append(String.format("%s (%s)\n", t.getName(), owner));
+            sb.append("  Size: ").append(t.getSize())
+                    .append(", Neighbors: ").append(t.neighborsString()).append("\n");
+            sb.append("  Units: ").append(unitsDetail).append("\n\n");
         }
+        sb.append("=============================\n");
         return sb.toString();
     }
+
+
 }

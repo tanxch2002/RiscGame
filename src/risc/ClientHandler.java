@@ -68,13 +68,13 @@ public class ClientHandler extends Thread {
                 line = line.trim().toUpperCase();
 
                 if (line.startsWith("M")) {
-                    out.println("Enter format: sourceTerritory destinationTerritory numUnits");
+                    out.println("Enter format: sourceTerritory destinationTerritory level numUnits");
                     String argsLine = in.readLine();
                     if (argsLine == null) break;
                     processMoveOrder(argsLine, game);
 
                 } else if (line.startsWith("A")) {
-                    out.println("Enter format: sourceTerritory targetTerritory numUnits");
+                    out.println("Enter format: sourceTerritory targetTerritory level numUnits");
                     String argsLine = in.readLine();
                     if (argsLine == null) break;
                     processAttackOrder(argsLine, game);
@@ -103,38 +103,50 @@ public class ClientHandler extends Thread {
     }
 
     private void processMoveOrder(String argsLine, Game game) {
+        // 期望输入格式: sourceTerritory destinationTerritory level numUnits
         String[] parts = argsLine.split("\\s+");
-        if (parts.length == 3) {
+        if (parts.length == 4) {
             try {
                 String src = parts[0];
                 String dest = parts[1];
-                int units = Integer.parseInt(parts[2]);
-                game.addOrder(new MoveOrder(playerID, src, dest, units));
-                sendMessage("Move order added: " + src + " -> " + dest + " (" + units + " units)");
+                int level = Integer.parseInt(parts[2]);
+                int units = Integer.parseInt(parts[3]);
+
+                game.addOrder(new MoveOrder(playerID, src, dest, level, units));
+                sendMessage("Move order added: level " + level + " x " + units +
+                        " from " + src + " -> " + dest);
             } catch (NumberFormatException e) {
                 sendMessage("Invalid number format for move order.");
             }
         } else {
-            sendMessage("Invalid move order format.");
+            sendMessage("Invalid move order format. Expected 4 arguments.");
         }
     }
 
+
     private void processAttackOrder(String argsLine, Game game) {
+        // 先拆分输入
         String[] parts = argsLine.split("\\s+");
-        if (parts.length == 3) {
+        // 假定格式： sourceTerritory targetTerritory level numUnits
+        if (parts.length == 4) {
             try {
                 String src = parts[0];
                 String target = parts[1];
-                int units = Integer.parseInt(parts[2]);
-                game.addOrder(new AttackOrder(playerID, src, target, units));
-                sendMessage("Attack order added: " + src + " => " + target + " (" + units + " units)");
+                int level = Integer.parseInt(parts[2]);
+                int units = Integer.parseInt(parts[3]);
+
+                // 将 level 传给 AttackOrder 构造函数
+                game.addOrder(new AttackOrder(playerID, src, target, level, units));
+                sendMessage("Attack order added: level " + level + " x " + units +
+                        " from " + src + " => " + target);
             } catch (NumberFormatException e) {
                 sendMessage("Invalid number format for attack order.");
             }
         } else {
-            sendMessage("Invalid attack order format.");
+            sendMessage("Invalid attack order format. Expected 4 arguments.");
         }
     }
+
 
     /**
      * 处理单位升级指令：UpgradeUnitOrder

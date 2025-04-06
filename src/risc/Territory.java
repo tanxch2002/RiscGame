@@ -7,7 +7,7 @@ public class Territory {
     private Player owner;
 
     // 原先的 int units 替换为: Map<unitLevel, unitCount>
-    private final Map<Integer, Integer> unitMap;
+    private  Map<Integer, Integer> unitMap;
     private final List<Territory> neighbors;
 
     // 新增 size
