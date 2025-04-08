@@ -152,9 +152,9 @@ public class OrderExecutor {
 
         if (dest.getOwner() == p) return false; // Cannot attack your own territory
         if (!src.getNeighbors().contains(dest)) return false; // Must be adjacent
-        int have = src.getUnitMap().getOrDefault(0, 0);
-        if (dest.getOwner() == p) return false; // Cannot attack your own territory
-        if (!src.getNeighbors().contains(dest)) return false; // Must be adjacent
+//        int have = src.getUnitMap().getOrDefault(0, 0);
+//        if (dest.getOwner() == p) return false; // Cannot attack your own territory
+//        if (!src.getNeighbors().contains(dest)) return false; // Must be adjacent
 
         // Make sure we have enough units of the specified level
         int have = src.getUnitMap().getOrDefault(ao.getLevel(), 0);
