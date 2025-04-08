@@ -35,22 +35,43 @@ class TerritoryTest {
     }
 
     /**
-     * Test retrieving the number of units in a Territory (should be 0 initially).
+     * Test retrieving the units in a Territory (should be 0 initially for all levels).
      */
     @Test
-    void getUnits() {
+    void testInitialUnits() {
         Territory t = new Territory("A");
-        assertEquals(0, t.getUnits());
+        assertEquals(0, t.getTotalUnits());
+        assertTrue(t.getUnitMap().isEmpty());
     }
 
     /**
-     * Test setting the number of units in a Territory.
+     * Test adding and removing units.
      */
     @Test
-    void setUnits() {
+    void testAddRemoveUnits() {
         Territory t = new Territory("A");
-        t.setUnits(5);
-        assertEquals(5, t.getUnits());
+        t.addUnits(0, 5);
+        assertEquals(5, t.getUnitMap().get(0));
+        assertEquals(5, t.getTotalUnits());
+
+        // Add more units of the same level
+        t.addUnits(0, 3);
+        assertEquals(8, t.getUnitMap().get(0));
+
+        // Add units of a different level
+        t.addUnits(1, 2);
+        assertEquals(8, t.getUnitMap().get(0));
+        assertEquals(2, t.getUnitMap().get(1));
+        assertEquals(10, t.getTotalUnits());
+
+        // Remove units
+        assertTrue(t.removeUnits(0, 3));
+        assertEquals(5, t.getUnitMap().get(0));
+        assertEquals(7, t.getTotalUnits());
+
+        // Try to remove more units than available
+        assertFalse(t.removeUnits(1, 3));
+        assertEquals(2, t.getUnitMap().get(1));
     }
 
     /**

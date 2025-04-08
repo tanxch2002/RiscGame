@@ -10,7 +10,7 @@ class OrderTest {
      */
     @Test
     void getPlayerID() {
-        Order o = new AttackOrder(1, "S", "D", 3);
+        Order o = new AttackOrder(1, "S", "D", 0, 3);
         assertEquals(1, o.getPlayerID());
     }
 
@@ -19,7 +19,7 @@ class OrderTest {
      */
     @Test
     void getSourceName() {
-        Order o = new MoveOrder(2, "Src", "Dest", 4);
+        Order o = new MoveOrder(2, "Src", "Dest", 0, 4);
         assertEquals("Src", o.getSourceName());
     }
 
@@ -28,7 +28,7 @@ class OrderTest {
      */
     @Test
     void getDestName() {
-        Order o = new AttackOrder(1, "X", "Y", 3);
+        Order o = new AttackOrder(1, "X", "Y", 0, 3);
         assertEquals("Y", o.getDestName());
     }
 
@@ -37,7 +37,7 @@ class OrderTest {
      */
     @Test
     void getNumUnits() {
-        Order o = new AttackOrder(1, "S", "D", 5);
+        Order o = new AttackOrder(1, "S", "D", 0, 5);
         assertEquals(5, o.getNumUnits());
     }
 }
