@@ -149,9 +149,15 @@ public class OrderExecutor {
         Territory dest = game.getTerritoryByName(ao.getDestName());
         if (src == null || dest == null) return false;
         if (src.getOwner() != p) return false;
+
         if (dest.getOwner() == p) return false; // Cannot attack your own territory
         if (!src.getNeighbors().contains(dest)) return false; // Must be adjacent
         int have = src.getUnitMap().getOrDefault(0, 0);
+        if (dest.getOwner() == p) return false; // Cannot attack your own territory
+        if (!src.getNeighbors().contains(dest)) return false; // Must be adjacent
+
+        // Make sure we have enough units of the specified level
+        int have = src.getUnitMap().getOrDefault(ao.getLevel(), 0);
         return have >= ao.getNumUnits();
     }
 

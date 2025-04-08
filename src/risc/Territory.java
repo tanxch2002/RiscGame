@@ -113,10 +113,12 @@ public class Territory {
     public boolean removeUnits(int level, int count) {
         int cur = unitMap.getOrDefault(level, 0);
         if (cur < count) return false;
-        if (cur == count) {
+
+        int newCount = cur - count;
+        if (newCount == 0) {
             unitMap.remove(level);
         } else {
-            unitMap.put(level, cur - count);
+            unitMap.put(level, newCount);
         }
         return true;
     }
