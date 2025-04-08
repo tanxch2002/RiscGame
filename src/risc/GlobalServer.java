@@ -6,18 +6,18 @@ import java.net.Socket;
 import java.util.*;
 
 /**
- * 全局服务器，负责：
- * 1) 账号管理（登录/注册）
- * 2) 维护并管理多个 RiscServer（多局游戏）
+ * Global server responsible for:
+ * 1) Account management (login/registration)
+ * 2) Maintaining and managing multiple RiscServers (multiple game rooms)
  */
 public class GlobalServer {
     private final int port;
-    // 用于存储用户的账号密码（示例中用Map模拟，实际项目可使用数据库）
+    // Used to store users' account credentials (using a Map for demonstration; in a real project, a database could be used)
     private final Map<String, String> userCredentials;
-    // 在线玩家账户信息（可根据需要做更复杂的会话管理）
+    // Online player account information (more complex session management can be implemented as needed)
     private final Map<String, PlayerAccount> onlineUsers;
 
-    // 所有游戏房间: gameID -> RiscServer
+    // All game rooms: gameID -> RiscServer
     private final Map<String, RiscServer> games;
 
     public GlobalServer(int port) {
@@ -26,12 +26,12 @@ public class GlobalServer {
         this.onlineUsers = new HashMap<>();
         this.games = new HashMap<>();
 
-        // 这里示例性放一个账号
+        // For demonstration, add a sample account here
         userCredentials.put("test", "123");
     }
 
     public static void main(String[] args) {
-        int port = 12345;   // 或者从 args[] 获取
+        int port = 12345;   // or obtain from args[]
         GlobalServer gs = new GlobalServer(port);
         gs.start();
     }
@@ -41,7 +41,7 @@ public class GlobalServer {
             System.out.println("GlobalServer started, listening on port " + port);
             while (true) {
                 Socket clientSocket = ss.accept();
-                // 对每个新客户端，用一个线程处理其登录/注册，并选择或创建游戏
+                // For each new client, start a thread to handle login/registration and game selection or creation
                 Thread t = new Thread(() -> handleClient(clientSocket));
                 t.start();
             }
@@ -51,7 +51,7 @@ public class GlobalServer {
     }
 
     /**
-     * 处理一个客户端的“登录->选房->交给对应 RiscServer”的流程
+     * Handles a client's process: login -> select a room -> hand off to the corresponding RiscServer.
      */
     private void handleClient(Socket socket) {
         try {
@@ -60,7 +60,7 @@ public class GlobalServer {
 
             out.println("Welcome to the Global RISC Server.");
 
-            // 执行登录/注册流程
+            // Execute the login/registration process
             PlayerAccount account = doLoginOrRegister(in, out);
             if (account == null) {
                 out.println("Login/Registration failed, closing...");
@@ -68,7 +68,7 @@ public class GlobalServer {
                 return;
             }
 
-            // 选择或创建游戏
+            // Choose or create a game
             String gameID = selectOrCreateGame(in, out);
             if (gameID == null) {
                 out.println("No valid game selected, closing...");
@@ -83,7 +83,7 @@ public class GlobalServer {
                 return;
             }
 
-            // 将未关闭的 socket 传递给 RiscServer 进行后续处理
+            // Pass the open socket to RiscServer for further handling
             server.addNewClient(socket, account);
 
         } catch (IOException e) {
@@ -91,10 +91,8 @@ public class GlobalServer {
         }
     }
 
-
-
     /**
-     * 登录/注册示例
+     * Example login/registration process.
      */
     private PlayerAccount doLoginOrRegister(BufferedReader in, PrintWriter out) throws IOException {
         out.println("Please enter 'L' to login, 'R' to register:");
@@ -108,7 +106,7 @@ public class GlobalServer {
                 out.println("Enter password:");
                 String pass = in.readLine();
                 if (userCredentials.containsKey(user) && userCredentials.get(user).equals(pass)) {
-                    // 登录成功
+                    // Login successful
                     PlayerAccount account = new PlayerAccount(user);
                     onlineUsers.put(user, account);
                     return account;
@@ -124,7 +122,7 @@ public class GlobalServer {
                 }
                 out.println("Choose a password:");
                 String newPass = in.readLine();
-                // 注册
+                // Registration
                 userCredentials.put(newUser, newPass);
                 out.println("Registered successfully as " + newUser);
                 PlayerAccount account = new PlayerAccount(newUser);
@@ -137,7 +135,7 @@ public class GlobalServer {
     }
 
     /**
-     * 让玩家选择加入已有游戏或创建新游戏
+     * Allows the player to choose between joining an existing game or creating a new one.
      */
     private String selectOrCreateGame(BufferedReader in, PrintWriter out) throws IOException {
         out.println("Existing games: " + games.keySet());
@@ -159,11 +157,11 @@ public class GlobalServer {
                 if (parts.length == 2) {
                     try {
                         int desiredPlayers = Integer.parseInt(parts[1]);
-                        // 创建新游戏
+                        // Create a new game
                         String newID = UUID.randomUUID().toString().substring(0, 8);
                         RiscServer rs = new RiscServer(desiredPlayers, newID);
                         games.put(newID, rs);
-                        // 启动该 RiscServer 的主要逻辑（如等待玩家到齐、startGame 等）
+                        // Start the main logic of the RiscServer (such as waiting for players to join, starting the game, etc.)
                         rs.startServerLogic();
                         out.println("New game created. ID=" + newID);
                         return newID;

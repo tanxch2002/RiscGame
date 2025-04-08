@@ -5,14 +5,15 @@ import java.net.Socket;
 import java.util.List;
 
 /**
- * ClientHandler 负责与单个客户端通信。
- * 在 run() 中完成基础欢迎消息，然后可以在 collectOrders()、collectInitialPlacement() 等方法与用户交互。
+ * ClientHandler is responsible for communicating with a single client.
+ * In the run() method, it sends a basic welcome message, and then further interacts
+ * with the user via methods like collectOrders() and collectInitialPlacement().
  */
 public class ClientHandler extends Thread {
     private final Socket socket;
     private final RiscServer server;
     private final int playerID;
-    private final PlayerAccount account; // 新增，表示登录账户
+    private final PlayerAccount account; // Added to represent the login account
 
     private PrintWriter out;
     private BufferedReader in;
@@ -39,14 +40,14 @@ public class ClientHandler extends Thread {
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             out.println("Welcome, " + account.getUsername() + "! You are player #" + (playerID + 1));
-            // 后续可继续在此处处理与客户端的握手、指令等
+            // Further processing for client handshake and commands can be implemented here.
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     /**
-     * 向客户端发送一条文本消息
+     * Sends a text message to the client.
      */
     public void sendMessage(String msg) {
         if (out != null) {
@@ -55,7 +56,7 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * 收集本玩家的本回合指令(Move/Attack/Upgrade/TechUpgrade/Done)
+     * Collects the player's commands for the current turn (Move/Attack/Upgrade/TechUpgrade/Done).
      */
     public void collectOrders(Game game) {
         try {
@@ -63,7 +64,7 @@ public class ClientHandler extends Thread {
                 out.println("Enter an order (M/A/U/T/D): ");
                 String line = in.readLine();
                 if (line == null) {
-                    break; // 客户端断开
+                    break; // Client disconnected.
                 }
                 line = line.trim().toUpperCase();
 
@@ -86,7 +87,7 @@ public class ClientHandler extends Thread {
                     processUpgradeOrder(argsLine, game);
 
                 } else if (line.startsWith("T")) {
-                    // 发起最大科技等级升级
+                    // Initiate maximum technology level upgrade.
                     processTechUpgradeOrder(game);
 
                 } else if (line.startsWith("D")) {
@@ -103,7 +104,7 @@ public class ClientHandler extends Thread {
     }
 
     private void processMoveOrder(String argsLine, Game game) {
-        // 期望输入格式: sourceTerritory destinationTerritory level numUnits
+        // Expected input format: sourceTerritory destinationTerritory level numUnits
         String[] parts = argsLine.split("\\s+");
         if (parts.length == 4) {
             try {
@@ -123,11 +124,10 @@ public class ClientHandler extends Thread {
         }
     }
 
-
     private void processAttackOrder(String argsLine, Game game) {
-        // 先拆分输入
+        // Split the input.
+        // Expected format: sourceTerritory targetTerritory level numUnits
         String[] parts = argsLine.split("\\s+");
-        // 假定格式： sourceTerritory targetTerritory level numUnits
         if (parts.length == 4) {
             try {
                 String src = parts[0];
@@ -135,7 +135,7 @@ public class ClientHandler extends Thread {
                 int level = Integer.parseInt(parts[2]);
                 int units = Integer.parseInt(parts[3]);
 
-                // 将 level 传给 AttackOrder 构造函数
+                // Pass the level parameter to the AttackOrder constructor
                 game.addOrder(new AttackOrder(playerID, src, target, level, units));
                 sendMessage("Attack order added: level " + level + " x " + units +
                         " from " + src + " => " + target);
@@ -147,12 +147,11 @@ public class ClientHandler extends Thread {
         }
     }
 
-
     /**
-     * 处理单位升级指令：UpgradeUnitOrder
+     * Processes the unit upgrade command: UpgradeUnitOrder.
      */
     private void processUpgradeOrder(String argsLine, Game game) {
-        // territoryName, currentLevel, targetLevel, numUnits
+        // Expected input format: territoryName currentLevel targetLevel numUnits
         String[] parts = argsLine.split("\\s+");
         if (parts.length == 4) {
             try {
@@ -171,7 +170,7 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * 处理最大科技等级升级：TechUpgradeOrder
+     * Processes the maximum technology upgrade command: TechUpgradeOrder.
      */
     private void processTechUpgradeOrder(Game game) {
         game.addOrder(new TechUpgradeOrder(playerID));
@@ -179,7 +178,7 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * 收集玩家的初始单位安置，将 initialUnits 分配到玩家领土上
+     * Collects the player's initial unit placement, assigning the initial units to the player's territories.
      */
     public void collectInitialPlacement(Game game) {
         int remainingUnits = game.getInitialUnits();
@@ -196,10 +195,10 @@ public class ClientHandler extends Thread {
                     int units = Integer.parseInt(input.trim());
                     if (units < 0 || units > remainingUnits) {
                         sendMessage("Invalid input, please enter a number between 0 and " + remainingUnits);
-                        i--; // 重试
+                        i--; // Retry
                         continue;
                     }
-                    // 这里示例：把全部分配为等级0单位
+                    // For demonstration, allocate all as level 0 units.
                     t.addUnits(0, units);
                     remainingUnits -= units;
                 } catch (IOException | NumberFormatException e) {
@@ -207,7 +206,7 @@ public class ClientHandler extends Thread {
                     i--;
                 }
             } else {
-                // 最后一个领土自动分配剩余单位
+                // Automatically allocate the remaining units to the last territory.
                 t.addUnits(0, remainingUnits);
                 sendMessage("Territory " + t.getName() + " automatically allocated the remaining " + remainingUnits + " units.");
                 remainingUnits = 0;
@@ -217,7 +216,7 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * 关闭与客户端的连接
+     * Closes the connection with the client.
      */
     public void closeConnection() {
         try {
@@ -225,7 +224,7 @@ public class ClientHandler extends Thread {
             if (out != null) out.close();
             socket.close();
         } catch (IOException e) {
-            // ignore
+            // Ignore exceptions during close.
         }
     }
 }

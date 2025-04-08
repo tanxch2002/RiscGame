@@ -5,11 +5,11 @@ import java.util.*;
 public class OrderExecutor {
     private final Game game;
 
-    // 示例：单位等级 -> (总费用, 战斗加值)
+    // Example: unit level -> (total cost, combat bonus)
     private static final int[] UNIT_TOTAL_COST = {0, 3, 8, 19, 25, 35, 50};
     private static final int[] UNIT_BONUS =      {0, 1, 3,  5,  8, 11, 15};
 
-    // 升级费用表 (1->2=50, 2->3=75, ...)
+    // Upgrade cost table (1->2=50, 2->3=75, ...)
     private static final Map<Integer, Integer> TECH_UPGRADE_COST = new HashMap<>();
     static {
         TECH_UPGRADE_COST.put(1, 50);
@@ -32,7 +32,7 @@ public class OrderExecutor {
         }
         for (MoveOrder m : moves) {
             if (!validateMove(m)) {
-                // 验证不通过就跳过
+                // Skip if validation fails
                 continue;
             }
             Player p = game.getPlayer(m.getPlayerID());
@@ -41,28 +41,27 @@ public class OrderExecutor {
             int units = m.getNumUnits();
             int level = m.getLevel();
 
-            // 计算移动的食物费用，示例= sumOfPathSizes * units
+            // Calculate the food cost for moving, e.g. = sumOfPathSizes * units
             int pathCost = findMinPathSizeSum(src, dest, p);
             if (pathCost < 0) {
-                // 不可达，跳过
+                // Unreachable, skip
                 continue;
             }
             int foodCost = pathCost * units;
             if (!p.spendFood(foodCost)) {
-                // 食物不够，跳过
+                // Not enough food, skip
                 continue;
             }
 
-            // 扣除源领土对应等级单位
+            // Deduct units of the corresponding level from the source territory
             if (!src.removeUnits(level, units)) {
-                // 不足则跳过
+                // Insufficient units, skip
                 continue;
             }
-            // 在目标领土增加对应等级单位
+            // Add units of the corresponding level to the destination territory
             dest.addUnits(level, units);
         }
     }
-
 
     private boolean validateMove(MoveOrder m) {
         Player p = game.getPlayer(m.getPlayerID());
@@ -71,17 +70,17 @@ public class OrderExecutor {
         if (src == null || dest == null) return false;
         if (src.getOwner() != p || dest.getOwner() != p) return false;
 
-        // 检查源领土是否有足够 m.getLevel() 的单位
+        // Check if the source territory has enough units of level m.getLevel()
         int have = src.getUnitMap().getOrDefault(m.getLevel(), 0);
         return have >= m.getNumUnits();
     }
 
-
     /**
-     * BFS求最小路径之和(只经过p拥有的领土)，返回所有领土的size之和。
+     * Uses BFS to find the minimal sum of path sizes (only traversing territories owned by player p),
+     * returns the sum of the sizes of all territories along the path.
      */
     private int findMinPathSizeSum(Territory start, Territory end, Player p) {
-        // 存储 BFS队列: (territory, costSoFar)
+        // Store BFS queue: (territory, costSoFar)
         Queue<PathNode> queue = new LinkedList<>();
         queue.offer(new PathNode(start, start.getSize()));
         Set<Territory> visited = new HashSet<>();
@@ -100,8 +99,9 @@ public class OrderExecutor {
                 }
             }
         }
-        return -1; // 不可达
+        return -1; // Unreachable
     }
+
     private static class PathNode {
         Territory terr;
         int costSum;
@@ -112,7 +112,7 @@ public class OrderExecutor {
     }
 
     public void executeAttackOrders() {
-        // 简化：只处理AttackOrder
+        // Simplified: only process AttackOrder
         List<AttackOrder> attacks = new ArrayList<>();
         for (Order o : game.getAllOrders()) {
             if (o instanceof AttackOrder) {
@@ -127,22 +127,21 @@ public class OrderExecutor {
             Territory src = game.getTerritoryByName(ao.getSourceName());
             Territory dest = game.getTerritoryByName(ao.getDestName());
             int units = ao.getNumUnits();
-            int level = ao.getLevel(); // 使用攻击指令中的等级
+            int level = ao.getLevel(); // Use the level specified in the attack order
 
-            // 攻击花费 = units * 1 食物
+            // Attack cost = units * 1 food
             int foodCost = units;
             if (!attacker.spendFood(foodCost)) {
                 continue;
             }
-            // 从源领土删除对应等级的单位
+            // Remove units of the corresponding level from the source territory
             if (!src.removeUnits(level, units)) {
                 continue;
             }
-            // 调用新的resolveCombat方法，传入对应等级和单位数量
+            // Call the new resolveCombat method with the corresponding level and unit count
             resolveCombat(dest, attacker, level, units);
         }
     }
-
 
     private boolean validateAttack(AttackOrder ao) {
         Player p = game.getPlayer(ao.getPlayerID());
@@ -150,58 +149,60 @@ public class OrderExecutor {
         Territory dest = game.getTerritoryByName(ao.getDestName());
         if (src == null || dest == null) return false;
         if (src.getOwner() != p) return false;
-        if (dest.getOwner() == p) return false; // 不能打自己
-        if (!src.getNeighbors().contains(dest)) return false; // 必须相邻
+        if (dest.getOwner() == p) return false; // Cannot attack your own territory
+        if (!src.getNeighbors().contains(dest)) return false; // Must be adjacent
         int have = src.getUnitMap().getOrDefault(0, 0);
         return have >= ao.getNumUnits();
     }
 
-    // 新的战斗机制
+    // New combat mechanism
     private void resolveCombat(Territory dest, Player attacker, int attackingLevel, int attackingCount) {
         Player defender = dest.getOwner();
-        // 收集防守方所有单位
+        // Gather all defending units
         List<UnitInfo> defUnits = gatherUnitsFromTerritory(dest);
-        // 收集进攻方单位
+        // Gather attacking units
         List<UnitInfo> attUnits = new ArrayList<>();
         attUnits.add(new UnitInfo(attackingLevel, UNIT_BONUS[attackingLevel], attackingCount));
 
-        // 战斗回合：交替进行两种配对方式
+        // Combat rounds: alternate between two pairing methods
         while (!attUnits.isEmpty() && !defUnits.isEmpty()) {
-            // 第一对：进攻方最高加值单位 vs 防守方最低加值单位
+            // First pairing: attacker's highest bonus unit vs. defender's lowest bonus unit
             UnitInfo attackerHighest = getHighestBonus(attUnits);
             UnitInfo defenderLowest = getLowestBonus(defUnits);
             if (attackerHighest != null && defenderLowest != null) {
                 int attackRoll = DiceRoller.rollD20() + attackerHighest.bonus;
                 int defenseRoll = DiceRoller.rollD20() + defenderLowest.bonus;
                 if (attackRoll > defenseRoll) {
-                    // 防守方损失1个单位
+                    // Defender loses one unit
                     defenderLowest.count--;
                     if (defenderLowest.count <= 0) {
                         defUnits.remove(defenderLowest);
                     }
                 } else {
-                    // 平局或防守胜，进攻方损失1个单位
+                    // Tie or defender wins, attacker loses one unit
                     attackerHighest.count--;
                     if (attackerHighest.count <= 0) {
                         attUnits.remove(attackerHighest);
                     }
                 }
             }
-            // 检查是否有一方已经全部损失
+            // Check if one side has lost all units
             if (attUnits.isEmpty() || defUnits.isEmpty()) break;
 
-            // 第二对：进攻方最低加值单位 vs 防守方最高加值单位
+            // Second pairing: attacker's lowest bonus unit vs. defender's highest bonus unit
             UnitInfo attackerLowest = getLowestBonus(attUnits);
             UnitInfo defenderHighest = getHighestBonus(defUnits);
             if (attackerLowest != null && defenderHighest != null) {
                 int attackRoll = DiceRoller.rollD20() + attackerLowest.bonus;
                 int defenseRoll = DiceRoller.rollD20() + defenderHighest.bonus;
                 if (attackRoll > defenseRoll) {
+                    // Defender loses one unit
                     defenderHighest.count--;
                     if (defenderHighest.count <= 0) {
                         defUnits.remove(defenderHighest);
                     }
                 } else {
+                    // Attacker loses one unit
                     attackerLowest.count--;
                     if (attackerLowest.count <= 0) {
                         attUnits.remove(attackerLowest);
@@ -210,9 +211,9 @@ public class OrderExecutor {
             }
         }
 
-        // 战斗结束：根据剩余单位判断胜负
+        // Combat ends: determine victory based on remaining units
         if (defUnits.isEmpty()) {
-            // 攻击方胜利，领土占领
+            // Attacker wins and occupies the territory
             dest.setOwner(attacker);
             dest.getUnitMap().clear();
             for (UnitInfo info : attUnits) {
@@ -223,7 +224,7 @@ public class OrderExecutor {
             defender.removeTerritory(dest);
             attacker.addTerritory(dest);
         } else {
-            // 防守方胜利
+            // Defender wins
             dest.getUnitMap().clear();
             for (UnitInfo info : defUnits) {
                 if (info.count > 0) {
@@ -233,7 +234,7 @@ public class OrderExecutor {
         }
     }
 
-    // 辅助方法：查找列表中战斗加值最高的单位
+    // Helper method: find the unit with the highest combat bonus in the list
     private UnitInfo getHighestBonus(List<UnitInfo> list) {
         UnitInfo highest = null;
         for (UnitInfo info : list) {
@@ -244,7 +245,7 @@ public class OrderExecutor {
         return highest;
     }
 
-    // 辅助方法：查找列表中战斗加值最低的单位
+    // Helper method: find the unit with the lowest combat bonus in the list
     private UnitInfo getLowestBonus(List<UnitInfo> list) {
         UnitInfo lowest = null;
         for (UnitInfo info : list) {
@@ -255,7 +256,6 @@ public class OrderExecutor {
         return lowest;
     }
 
-
     private List<UnitInfo> gatherUnitsFromTerritory(Territory t) {
         List<UnitInfo> list = new ArrayList<>();
         for (Map.Entry<Integer, Integer> e : t.getUnitMap().entrySet()) {
@@ -263,7 +263,7 @@ public class OrderExecutor {
             int cnt = e.getValue();
             list.add(new UnitInfo(lvl, UNIT_BONUS[lvl], cnt));
         }
-        // 也可排序
+        // Optionally, sort the list
         return list;
     }
 
@@ -278,7 +278,7 @@ public class OrderExecutor {
         }
     }
 
-    //=== 新增：单位升级指令
+    //=== New: Unit Upgrade Order
     public void executeUpgradeOrders() {
         for (Order o : game.getAllOrders()) {
             if (o instanceof UpgradeUnitOrder) {
@@ -292,36 +292,36 @@ public class OrderExecutor {
                 int have = t.getUnitMap().getOrDefault(uo.getCurrentLevel(), 0);
                 if (have < needUnits) continue;
 
-                // 升级费用 = (UNIT_TOTAL_COST[target] - UNIT_TOTAL_COST[current]) * needUnits
+                // Upgrade cost = (UNIT_TOTAL_COST[target] - UNIT_TOTAL_COST[current]) * needUnits
                 int cost = (UNIT_TOTAL_COST[uo.getTargetLevel()] - UNIT_TOTAL_COST[uo.getCurrentLevel()]) * needUnits;
                 if (cost < 0) continue;
                 if (!p.spendTech(cost)) continue;
 
-                // 执行升级
+                // Execute the upgrade
                 t.removeUnits(uo.getCurrentLevel(), needUnits);
                 t.addUnits(uo.getTargetLevel(), needUnits);
             }
         }
     }
 
-    //=== 新增：最大科技升级指令
+    //=== New: Tech Upgrade Order
     public void executeTechUpgradeOrders() {
-        // 同一回合只能一次升级，也可加限制
+        // Only one upgrade per turn; additional restrictions can be added
         Set<Player> upgradedThisTurn = new HashSet<>();
         for (Order o : game.getAllOrders()) {
             if (o instanceof TechUpgradeOrder) {
-                TechUpgradeOrder to = (TechUpgradeOrder)o;
+                TechUpgradeOrder to = (TechUpgradeOrder) o;
                 Player p = game.getPlayer(to.getPlayerID());
                 if (upgradedThisTurn.contains(p)) {
-                    // 已经升级过，跳过
+                    // Already upgraded, skip
                     continue;
                 }
                 int currLevel = p.getMaxTechLevel();
-                if (currLevel >= 6) continue; // 最高6？
+                if (currLevel >= 6) continue; // Maximum is 6?
                 int nextLevel = currLevel + 1;
                 int cost = TECH_UPGRADE_COST.getOrDefault(currLevel, 99999);
                 if (p.spendTech(cost)) {
-                    // 升级标记，回合结束后生效
+                    // Mark the upgrade; effective at turn end
                     p.startTechUpgrade(nextLevel);
                     upgradedThisTurn.add(p);
                 }

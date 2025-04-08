@@ -1,19 +1,22 @@
 package risc;
 
 /**
- * 表示对单位进行升级的指令。
- * 例如把领土 territoryName 中若干个 currentLevel 的单位升级到 targetLevel。
+ * Represents an order to upgrade units.
+ * For example, upgrade a specified number of units from currentLevel to targetLevel
+ * in the territory identified by territoryName.
  */
 public class UpgradeUnitOrder extends Order {
     private final int currentLevel;
     private final int targetLevel;
 
     /**
-     * @param playerID     发起指令的玩家ID
-     * @param territoryName 进行升级操作的领土
-     * @param currentLevel 当前单位等级
-     * @param targetLevel  目标单位等级
-     * @param numUnits     升级的单位数量
+     * Constructs an order to upgrade units.
+     *
+     * @param playerID      the ID of the player issuing the order
+     * @param territoryName the territory in which the upgrade operation takes place
+     * @param currentLevel  the current level of the units
+     * @param targetLevel   the target level for the units after upgrade
+     * @param numUnits      the number of units to upgrade
      */
     public UpgradeUnitOrder(int playerID,
                             String territoryName,
