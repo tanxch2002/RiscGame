@@ -6,17 +6,17 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Game 对象持有：地图(territories)、玩家列表、订单列表、以及执行器(OrderExecutor)。
- * 同时负责在回合结束时产出资源、生成新单位、进行科技升级生效等。
+ * The Game object holds the map (territories), a list of players, the list of orders, and the OrderExecutor.
+ * It is also responsible for producing resources, generating new units, and applying technology upgrades at the end of each turn.
  */
 public class Game {
     private final List<Territory> territories;
     private final List<Player> players;
-    final List<Order> allOrders;  // 订单列表 (可能多线程访问)
+    final List<Order> allOrders;  // List of orders (may be accessed by multiple threads)
     private final Random rand;
     private final OrderExecutor orderExecutor;
 
-    private int initialUnitsPerPlayer = 10; // 初始每位玩家可分配的单位数量
+    private int initialUnitsPerPlayer = 10; // The number of units that each player starts with
     private boolean winnerExists = false;
     private Player winner = null;
 
@@ -29,16 +29,16 @@ public class Game {
     }
 
     /**
-     * 根据玩家数量构建地图
+     * Sets up the map based on the desired number of players.
      */
     public void setUpMap(int desiredPlayers) {
         territories.clear();
-        // 调用原先的MapBuilder，或者自定义:
+        // Call the original MapBuilder or a custom one:
         territories.addAll(MapBuilder.buildMap(desiredPlayers));
     }
 
     /**
-     * 初始化玩家并分配领土
+     * Initializes players and assigns territories to them.
      */
     public void initPlayers(int numPlayers) {
         players.clear();
@@ -46,7 +46,7 @@ public class Game {
             Player p = new Player(i, "Player" + (i + 1));
             players.add(p);
         }
-        // 将领土分配给玩家 (示例性做法)
+        // Distribute territories to players (this is an example approach)
         int totalTerritories = territories.size();
         int baseCount = totalTerritories / numPlayers;
         int extra = totalTerritories % numPlayers;
@@ -68,28 +68,28 @@ public class Game {
     }
 
     /**
-     * 同步地添加一个订单
+     * Synchronously adds an order.
      */
     public synchronized void addOrder(Order order) {
         allOrders.add(order);
     }
 
     /**
-     * 执行所有移动指令
+     * Executes all move orders.
      */
     public void executeAllMoveOrders() {
         orderExecutor.executeMoveOrders();
     }
 
     /**
-     * 执行所有攻击指令
+     * Executes all attack orders.
      */
     public void executeAllAttackOrders() {
         orderExecutor.executeAttackOrders();
     }
 
     /**
-     * 执行单位升级与科技升级指令
+     * Executes both unit upgrade orders and technology upgrade orders.
      */
     public void executeAllUpgrades() {
         orderExecutor.executeUpgradeOrders();
@@ -97,26 +97,26 @@ public class Game {
     }
 
     /**
-     * 回合结束时清空所有订单
+     * Clears all orders at the end of the turn.
      */
     public void clearAllOrders() {
         allOrders.clear();
     }
 
     /**
-     * 每回合结束时：
-     * 1) 若有玩家正在进行 maxTechLevel 升级，则在此时生效
-     * 2) 领土为玩家产出资源
-     * 3) 每块领土生成 1 个基础单位（level=0）
+     * At the end of each turn:
+     * 1) If any player is undergoing a maxTechLevel upgrade, it takes effect now.
+     * 2) Territories generate resources for the player.
+     * 3) Each territory produces one basic unit (level 0).
      */
     public void endTurn() {
-        // 1) 生效最大科技等级升级
+        // 1) Apply the max technology level upgrades
         for (Player p : players) {
             if (p.isTechUpgrading()) {
                 p.finishTechUpgrade();
             }
         }
-        // 2) & 3) 收集资源 + 领土上生成1支基础单位
+        // 2) & 3) Collect resources and produce one basic unit on each territory
         for (Player p : players) {
             if (!p.isAlive()) continue;
             int totalFood = 0;
@@ -124,7 +124,7 @@ public class Game {
             for (Territory t : p.getTerritories()) {
                 totalFood += t.getFoodProduction();
                 totalTech += t.getTechProduction();
-                // 增加 1 个等级0单位
+                // Add one level 0 unit
                 t.addUnits(0, 1);
             }
             p.addFood(totalFood);
@@ -133,7 +133,8 @@ public class Game {
     }
 
     /**
-     * 更新玩家状态。若某玩家已无领土，则其被淘汰；若只剩一位玩家存活，则游戏结束
+     * Updates the player statuses. If a player has no territories, they are eliminated;
+     * if only one player remains alive, the game ends.
      */
     public void updatePlayerStatus() {
         for (Player p : players) {
@@ -141,7 +142,7 @@ public class Game {
                 p.setAlive(false);
             }
         }
-        // 统计存活玩家
+        // Count the alive players
         List<Player> alivePlayers = new ArrayList<>();
         for (Player p : players) {
             if (p.isAlive()) {
@@ -152,7 +153,7 @@ public class Game {
             this.winnerExists = true;
             this.winner = alivePlayers.get(0);
         }
-        // 或者检查是否有人拥有了所有领土
+        // Alternatively, check if a player owns all the territories
         for (Player p : alivePlayers) {
             if (p.getTerritories().size() == territories.size()) {
                 this.winnerExists = true;
@@ -192,7 +193,7 @@ public class Game {
     }
 
     /**
-     * 打印地图状态
+     * Prints the current state of the map.
      */
     public String getMapState() {
         StringBuilder sb = new StringBuilder();
@@ -200,7 +201,7 @@ public class Game {
         for (Territory t : territories) {
             String owner = (t.getOwner() == null ? "None" : t.getOwner().getName());
 
-            // 收集并排序每个等级对应的单位数量（只是为了输出时更有顺序）
+            // Collect and sort the number of units per level for orderly output
             List<Integer> sortedLevels = new ArrayList<>(t.getUnitMap().keySet());
             Collections.sort(sortedLevels);
 
@@ -213,8 +214,8 @@ public class Game {
                     unitsDetail.append("Level ").append(level)
                             .append(": ").append(count).append(" units; ");
                 }
-                // 去掉末尾多余的分号空格
-                // 例如 "Level 0: 5 units; Level 1: 2 units; " -> "Level 0: 5 units; Level 1: 2 units"
+                // Remove the extra semicolon and space at the end
+                // For example, "Level 0: 5 units; Level 1: 2 units; " -> "Level 0: 5 units; Level 1: 2 units"
                 if (unitsDetail.length() > 2) {
                     unitsDetail.setLength(unitsDetail.length() - 2);
                 }
@@ -228,6 +229,4 @@ public class Game {
         sb.append("=============================\n");
         return sb.toString();
     }
-
-
 }

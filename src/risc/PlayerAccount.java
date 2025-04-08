@@ -1,9 +1,11 @@
 package risc;
 
 /**
- * 表示一个玩家的账号。
- * 可在此保存更多数据：是否在其他游戏中、历史成绩、断线重连信息等等。
+ * Represents a player's account.
+ * Additional data can be stored here, such as whether the player is active in other games,
+ * historical performance records, reconnection information after disconnections, etc.
  */
+
 public class PlayerAccount {
     private final String username;
 

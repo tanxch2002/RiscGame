@@ -7,9 +7,9 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * 多人游戏房间服务器。与 GlobalServer 配合:
- * - GlobalServer 接受连接并完成登录/注册以及选房
- * - RiscServer 只负责管理本游戏内的客户端和游戏逻辑
+ * Multiplayer game room server. Works in conjunction with the GlobalServer:
+ * - GlobalServer accepts connections and handles login/registration as well as room selection.
+ * - RiscServer is solely responsible for managing the clients within the game and the game logic.
  */
 public class RiscServer {
     public static final int MIN_PLAYERS = 2;
@@ -27,28 +27,28 @@ public class RiscServer {
         this.gameID = gameID;
         this.clientHandlers = new ArrayList<>();
         this.game = new Game();
-        // 根据玩家数量搭建地图
+        // Set up the game map based on the number of players
         this.game.setUpMap(desiredPlayers);
     }
 
     /**
-     * 在后台启动该游戏的主要流程，例如：
-     * 等待所有玩家到齐 -> 初始化玩家 -> 进入回合循环 -> 结束游戏
+     * Starts the main game flow in the background, e.g.:
+     * Waiting for all players to join -> Initialize players -> Enter the turn loop -> End game
      */
     public void startServerLogic() {
         Thread t = new Thread(() -> {
             System.out.println("[RiscServer-" + gameID + "] is ready. Expecting " + desiredPlayers + " players.");
             synchronized (clientHandlers) {
-                // 等待直到有足够数量的玩家加入
+                // Wait until a sufficient number of players have joined
                 while (clientHandlers.size() < desiredPlayers) {
                     try {
-                        clientHandlers.wait(); // 没满就一直等待
+                        clientHandlers.wait(); // Wait if the room is not full
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
             }
-            // 所有玩家到齐
+            // All players have joined
             started = true;
             System.out.println("[RiscServer-" + gameID + "] All players joined! Starting game...");
             startGame();
@@ -57,11 +57,11 @@ public class RiscServer {
     }
 
     /**
-     * 由 GlobalServer 调用，将一个新客户端 socket + 账号 加入本游戏。
+     * Called by GlobalServer to add a new client socket and account to this game.
      */
     public synchronized void addNewClient(Socket socket, PlayerAccount account) {
         if (started) {
-            // 如果游戏已经开始，是否允许新玩家加入，视规则而定
+            // If the game has already started, whether to allow new players depends on the rules
             System.out.println("Game already started, reject new player: " + account.getUsername());
             try {
                 socket.close();
@@ -70,27 +70,25 @@ public class RiscServer {
             }
             return;
         }
-        int newPlayerID = clientHandlers.size(); // 当前已加入玩家数
+        int newPlayerID = clientHandlers.size(); // Current number of joined players
         ClientHandler ch = new ClientHandler(socket, this, newPlayerID, account);
         clientHandlers.add(ch);
         ch.start();
 
-        // 唤醒等待玩家加入的线程
+        // Wake up threads waiting for players to join
         synchronized (clientHandlers) {
             clientHandlers.notifyAll();
         }
     }
 
     /**
-     * 正式开始游戏，初始化玩家，执行回合流程
+     * Officially starts the game by initializing players and executing the turn loop.
      */
-    // … 省略前面的代码
-
     public void startGame() {
-        // 1) 初始化玩家
+        // 1) Initialize players
         game.initPlayers(clientHandlers.size());
 
-        // 将每个 Player 的名字设为其账号用户名
+        // Set each Player's name to the corresponding account's username
         for (int i = 0; i < clientHandlers.size(); i++) {
             Player p = game.getPlayer(i);
             p.setName(clientHandlers.get(i).getAccount().getUsername());
@@ -99,14 +97,14 @@ public class RiscServer {
         broadcastMessage("All players connected. Let the game begin.\n");
         broadcastMessage("You have " + game.getInitialUnits() + " units to place initially.\n");
 
-        // 2) 初始安置
+        // 2) Initial placement phase
         gamePhaseInitialPlacement();
 
-        // 3) 进入游戏主循环
+        // 3) Enter the main game loop
         while (!game.hasWinner()) {
             broadcastMessage("\n=== New Turn Begins ===\n");
 
-            // 新增：向每个客户端显示玩家状态（等级、食物、科技点数）
+            // New: Display each player's status (level, food, tech points) to them
             for (ClientHandler ch : clientHandlers) {
                 Player p = game.getPlayer(ch.getPlayerID());
                 if (p.isAlive()) {
@@ -119,11 +117,11 @@ public class RiscServer {
             issueOrdersPhase();
             executeOrdersPhase();
 
-            // 4) 回合结束，处理资源产出、新单位生成、科技升级生效等
+            // 4) End of turn: handle resource production, new units generation, and tech upgrades
             game.endTurn();
             broadcastMessage("Map state after resources & new units:\n" + game.getMapState());
 
-            // 5) 更新玩家状态、去除已无领土玩家
+            // 5) Update player statuses and remove players with no territories
             game.updatePlayerStatus();
             removeDeadPlayers();
 
@@ -137,9 +135,8 @@ public class RiscServer {
         closeAllConnections();
     }
 
-
     /**
-     * 演示性的初始单位安置流程，可并行地让所有玩家进行安置
+     * Demonstrative initial unit placement phase where all players can place units concurrently.
      */
     private void gamePhaseInitialPlacement() {
         broadcastMessage("Initial placement phase starts...");
@@ -155,7 +152,7 @@ public class RiscServer {
             t.start();
         }
 
-        // 等待全部玩家安置完毕
+        // Wait for all players to complete their placement
         for (Thread t : threads) {
             try {
                 t.join();
@@ -167,7 +164,7 @@ public class RiscServer {
     }
 
     /**
-     * 指令阶段，通知每个客户端输入指令
+     * Order phase: notifies each client to input their commands.
      */
     private void issueOrdersPhase() {
         broadcastMessage("Enter command: (M)ove, (A)ttack, (U)pgrade unit, (T)ech upgrade, (D)one.\n");
@@ -183,7 +180,7 @@ public class RiscServer {
             t.start();
         }
 
-        // 等待全部玩家输入完毕
+        // Wait for all players to finish inputting their orders
         for (Thread t : threads) {
             try {
                 t.join();
@@ -194,7 +191,7 @@ public class RiscServer {
     }
 
     /**
-     * 执行所有玩家输入的指令 (移动 / 攻击 / 升级等)
+     * Execute all commands input by the players (move, attack, upgrade, etc.).
      */
     private void executeOrdersPhase() {
         broadcastMessage("Executing move orders...");
@@ -202,16 +199,16 @@ public class RiscServer {
         broadcastMessage("Executing attack orders...");
         game.executeAllAttackOrders();
         broadcastMessage("Executing unit/tech upgrades...");
-        game.executeAllUpgrades();  // 需在 Game 或 OrderExecutor 中实现
+        game.executeAllUpgrades();  // To be implemented in Game or OrderExecutor
 
-        // 回合内全部指令执行完毕后清空
+        // Clear all orders after execution within the turn
         game.clearAllOrders();
 
         broadcastMessage("Map state after order execution:\n" + game.getMapState());
     }
 
     /**
-     * 删除没有领土的玩家 (被淘汰)
+     * Removes players who no longer control any territories (eliminated).
      */
     private void removeDeadPlayers() {
         Iterator<ClientHandler> it = clientHandlers.iterator();
@@ -226,7 +223,7 @@ public class RiscServer {
     }
 
     /**
-     * 向所有玩家广播消息
+     * Broadcasts a message to all players.
      */
     public void broadcastMessage(String msg) {
         for (ClientHandler ch : clientHandlers) {
@@ -236,7 +233,7 @@ public class RiscServer {
     }
 
     /**
-     * 关闭所有玩家连接
+     * Closes all connections to players.
      */
     public void closeAllConnections() {
         for (ClientHandler ch : clientHandlers) {
@@ -249,7 +246,7 @@ public class RiscServer {
         }
     }
 
-    // 可暴露 Getter
+    // Getter method for the Game instance
     public Game getGame() {
         return this.game;
     }

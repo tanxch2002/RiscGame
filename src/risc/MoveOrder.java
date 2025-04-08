@@ -8,11 +8,11 @@ public class MoveOrder extends Order {
     private final int level;
 
     /**
-     * @param playerID 发起移动的玩家 ID
-     * @param source 源领土
-     * @param dest   目标领土
-     * @param level  要移动的单位等级
-     * @param numUnits 要移动的该等级单位数量
+     * @param playerID ID of the player initiating the move
+     * @param source   The source territory
+     * @param dest     The destination territory
+     * @param level    The level of the units to be moved
+     * @param numUnits The number of units of the specified level to move
      */
     public MoveOrder(int playerID, String source, String dest, int level, int numUnits) {
         super(playerID, source, dest, numUnits);

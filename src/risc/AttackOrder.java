@@ -10,17 +10,24 @@ public class AttackOrder extends Order {
     private final int level;
 
     /**
-     * @param playerID 攻击发起者的 playerID
-     * @param source   源领土
-     * @param dest     目标领土
-     * @param level    攻击士兵的等级
-     * @param numUnits 该等级士兵的数量
+     * Constructs an AttackOrder.
+     *
+     * @param playerID the ID of the attacking player
+     * @param source   the source territory
+     * @param dest     the destination territory
+     * @param level    the level of the attacking units
+     * @param numUnits the number of units at the specified level
      */
     public AttackOrder(int playerID, String source, String dest, int level, int numUnits) {
         super(playerID, source, dest, numUnits);
         this.level = level;
     }
 
+    /**
+     * Returns the level of the attacking units.
+     *
+     * @return the level of the attacking units
+     */
     public int getLevel() {
         return level;
     }
