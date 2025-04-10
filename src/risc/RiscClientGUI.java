@@ -34,7 +34,7 @@ public class RiscClientGUI extends JFrame {
     private static int colorIndex = 0;
 
     public RiscClientGUI() {
-        super("RISC 客户端 GUI");
+        super("RISC Client GUI");
         setupUI();
         setSize(800, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -56,23 +56,23 @@ public class RiscClientGUI extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
 
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        topPanel.add(new JLabel("主机:"));
+        topPanel.add(new JLabel("Host:"));
         JTextField hostField = new JTextField(host, 10);
         topPanel.add(hostField);
-        topPanel.add(new JLabel("端口:"));
+        topPanel.add(new JLabel("Port:"));
         JTextField portField = new JTextField(String.valueOf(port), 5);
         topPanel.add(portField);
-        connectButton = new JButton("连接");
+        connectButton = new JButton("Connect");
         topPanel.add(connectButton);
 
         mapPanel = new MapPanel();
         JScrollPane mapScrollPane = new JScrollPane(mapPanel);
-        mapScrollPane.setBorder(BorderFactory.createTitledBorder("游戏地图"));
+        mapScrollPane.setBorder(BorderFactory.createTitledBorder("Game Map"));
 
         textArea = new JTextArea();
         textArea.setEditable(false);
         JScrollPane messageScrollPane = new JScrollPane(textArea);
-        messageScrollPane.setBorder(BorderFactory.createTitledBorder("服务器消息"));
+        messageScrollPane.setBorder(BorderFactory.createTitledBorder("Server Messages"));
         messageScrollPane.setPreferredSize(new Dimension(200, 200));
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
@@ -82,7 +82,7 @@ public class RiscClientGUI extends JFrame {
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
         inputField = new JTextField();
-        sendButton = new JButton("发送");
+        sendButton = new JButton("Send");
         sendButton.setEnabled(false);
         inputField.setEnabled(false);
         bottomPanel.add(inputField, BorderLayout.CENTER);
@@ -102,10 +102,10 @@ public class RiscClientGUI extends JFrame {
                 if (!this.host.isEmpty() && this.port > 0) {
                     handleConnect();
                 } else {
-                    appendMessage("请输入有效的主机和端口。\n");
+                    appendMessage("Please enter a valid host and port.\n");
                 }
             } catch (NumberFormatException ex) {
-                appendMessage("端口号不合法。\n");
+                appendMessage("Invalid port number.\n");
             }
         });
 
@@ -145,7 +145,7 @@ public class RiscClientGUI extends JFrame {
             serverIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             serverOut = new PrintWriter(socket.getOutputStream(), true);
 
-            appendMessage("已连接到服务器: " + host + ":" + port + "\n");
+            appendMessage("Connected to server: " + host + ":" + port + "\n");
             connectButton.setEnabled(false);
             sendButton.setEnabled(true);
             inputField.setEnabled(true);
@@ -157,7 +157,7 @@ public class RiscClientGUI extends JFrame {
             readerThread.start();
 
         } catch (IOException ex) {
-            appendMessage("连接失败: " + ex.getMessage() + "\n");
+            appendMessage("Connection failed: " + ex.getMessage() + "\n");
             connectButton.setEnabled(true);
             sendButton.setEnabled(false);
             inputField.setEnabled(false);
@@ -267,10 +267,10 @@ public class RiscClientGUI extends JFrame {
             }
         } catch (IOException ex) {
             if (socket != null && !socket.isClosed()) {
-                appendMessage("与服务器的连接已断开。\n");
+                appendMessage("Disconnected from server.\n");
             }
         } catch (Exception e) {
-            appendMessage("处理服务器消息时出错: " + e.getMessage() + "\n");
+            appendMessage("Error processing server messages: " + e.getMessage() + "\n");
             e.printStackTrace();
         } finally {
             SwingUtilities.invokeLater(() -> {
@@ -304,7 +304,7 @@ public class RiscClientGUI extends JFrame {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
-            System.err.println("无法设置系统外观: " + e);
+            System.err.println("Unable to set system look and feel: " + e);
         }
         SwingUtilities.invokeLater(() -> {
             RiscClientGUI clientGUI = new RiscClientGUI();

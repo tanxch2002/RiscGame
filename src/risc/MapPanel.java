@@ -200,11 +200,11 @@ public class MapPanel extends JPanel {
         g2d.setColor(Color.BLACK);
         int legendX = 20;
         int legendY = 20;
-        g2d.drawString("图例 (Legend):", legendX, legendY);
-        g2d.drawString("• 圆圈代表领地 (Territory)", legendX, legendY + 15);
-        g2d.drawString("• 线条表示相邻关系，可移动/进攻 (Adjacency)", legendX, legendY + 30);
-        g2d.drawString("• Sz=Size, F=Food, T=Tech (资源产量)", legendX, legendY + 45);
-        g2d.drawString("• 箭头表示移动 (Move Order)", legendX, legendY + 60);
+        g2d.drawString("Legend:", legendX, legendY);
+        g2d.drawString("• Circle represents Territory", legendX, legendY + 15);
+        g2d.drawString("• Line represents Adjacency (Movable/Attackable)", legendX, legendY + 30);
+        g2d.drawString("• Sz=Size, F=Food, T=Tech (Resource Production)", legendX, legendY + 45);
+        g2d.drawString("• Arrow indicates Movement", legendX, legendY + 60);
     }
 
     /**
