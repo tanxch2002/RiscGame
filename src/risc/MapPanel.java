@@ -2,41 +2,18 @@ package risc;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-/**
- * A JPanel that graphically displays the RISC game map.
- */
+/** 绘制客户端地图的面板  */
 public class MapPanel extends JPanel {
 
-    // Stores territory data using territory name as the key.
-    private Map<String, ClientTerritoryData> territoriesData = new HashMap<>();
-
-    // List to hold active move orders.
-    private List<MoveOrder> moveOrders = new ArrayList<>();
-
-    // Predefined layout with positions shifted down to avoid legend overlap.
+    /* 固定布局：领地中心坐标 */
     public static final Map<String, Point> territoryPositions = new HashMap<>();
-
-    // A larger, bold font for territory names.
-    private static final Font TERRITORY_NAME_FONT = new Font("SansSerif", Font.BOLD, 16);
-
     static {
-        /*
-         * Shift everything ~50px down from the original example
-         * and adjust E further to avoid overlap with B.
-         */
         territoryPositions.put("A", new Point(100, 150));
         territoryPositions.put("B", new Point(250, 150));
         territoryPositions.put("C", new Point(100, 300));
         territoryPositions.put("D", new Point(400, 150));
-        // E moved from (250, 250) to (250, 280) to avoid overlap with B.
         territoryPositions.put("E", new Point(250, 280));
         territoryPositions.put("F", new Point(200, 350));
         territoryPositions.put("G", new Point(100, 450));
@@ -45,221 +22,150 @@ public class MapPanel extends JPanel {
         territoryPositions.put("J", new Point(300, 500));
     }
 
+    private Map<String, ClientTerritoryData> terrs = new HashMap<>();
+    private final java.util.List<MoveOrder> moves = new ArrayList<>();
+    private static final Font NAME_FONT = new Font("SansSerif", Font.BOLD, 16);
+
     public MapPanel() {
         setPreferredSize(new Dimension(600, 600));
         setBackground(Color.WHITE);
     }
 
-    /**
-     * Updates the map data and triggers a repaint.
-     * @param newData A map where the key is the territory name and the value is its data.
-     */
-    public void updateMapData(Map<String, ClientTerritoryData> newData) {
-        // Ensure positions are assigned from the predefined layout.
-        for (Map.Entry<String, ClientTerritoryData> entry : newData.entrySet()) {
-            String name = entry.getKey();
-            ClientTerritoryData data = entry.getValue();
-            if (territoryPositions.containsKey(name)) {
-                Point pos = territoryPositions.get(name);
-                data.x = pos.x;
-                data.y = pos.y;
-            } else {
-                // Fallback for unknown territories.
-                System.err.println("Warning: No position defined for territory: " + name);
-                data.x = 50;
-                data.y = 50 + territoriesData.size() * 10;
-            }
-        }
-        this.territoriesData = newData;
-        repaint(); // Request a redraw.
-    }
-
-    /**
-     * Adds a move order to be drawn on the map.
-     */
-    public void addMoveOrder(MoveOrder order) {
-        moveOrders.add(order);
+    /* -------- 外部 API -------- */
+    public void updateMapData(Map<String, ClientTerritoryData> data) {
+        data.forEach((n, d) -> {
+            Point p = territoryPositions.getOrDefault(n,
+                    new Point(50, 50 + terrs.size() * 20));
+            d.x = p.x; d.y = p.y;
+        });
+        this.terrs = data;
+        revalidate();        // 让 JScrollPane 重新计算
         repaint();
     }
 
-    /**
-     * Clears all move orders.
-     */
+    public void addMoveOrder(MoveOrder o) {
+        moves.add(o);
+        repaint();
+    }
+
     public void clearMoveOrders() {
-        moveOrders.clear();
+        moves.clear();
         repaint();
     }
 
+    /* ====================== 绘制 ====================== */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
 
-        Graphics2D g2d = (Graphics2D) g;
-        // Enable anti-aliasing for smoother lines and text.
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        // Draw the legend first.
-        drawLegend(g2d);
-
-        if (territoriesData == null || territoriesData.isEmpty()) {
-            g2d.drawString("Map data not yet available...", 50, 80);
-        } else {
-            // --- Draw Connections (Lines) ---
-            g2d.setColor(Color.GRAY);
-            g2d.setStroke(new BasicStroke(2)); // Thicker lines.
-            Set<String> drawnConnections = new HashSet<>();
-
-            for (ClientTerritoryData src : territoriesData.values()) {
-                for (String neighborName : src.getNeighborNames()) {
-                    ClientTerritoryData dest = territoriesData.get(neighborName);
-                    if (dest != null) {
-                        String connKey1 = src.getName() + "-" + dest.getName();
-                        String connKey2 = dest.getName() + "-" + src.getName();
-                        if (!drawnConnections.contains(connKey1) && !drawnConnections.contains(connKey2)) {
-                            g2d.drawLine(src.getX(), src.getY(), dest.getX(), dest.getY());
-                            drawnConnections.add(connKey1);
-                        }
-                    }
-                }
-            }
-
-            // --- Draw Territories (Circles and Text) ---
-            for (ClientTerritoryData tData : territoriesData.values()) {
-                int x = tData.getX();
-                int y = tData.getY();
-                int r = tData.getRadius();
-
-                // Draw the territory circle.
-                g2d.setColor(tData.getOwnerColor());
-                g2d.fillOval(x - r, y - r, 2 * r, 2 * r);
-                g2d.setColor(Color.BLACK);
-                g2d.setStroke(new BasicStroke(2));
-                g2d.drawOval(x - r, y - r, 2 * r, 2 * r);
-
-                // --- Display Territory Information ---
-                Font originalFont = g2d.getFont();
-
-                // 1) Territory Name using the larger, bold font.
-                g2d.setFont(TERRITORY_NAME_FONT);
-                FontMetrics fmName = g2d.getFontMetrics();
-                int nameHeight = fmName.getAscent();
-                int currentY = y - r - nameHeight;
-                String nameStr = tData.getName();
-                int nameWidth = fmName.stringWidth(nameStr);
-                g2d.drawString(nameStr, x - nameWidth / 2, currentY);
-
-                // Restore the original font for other texts.
-                g2d.setFont(originalFont);
-                FontMetrics fm = g2d.getFontMetrics();
-                int textHeight = fm.getAscent();
-                currentY += nameHeight + 2;
-
-                // 2) Owner Name (if any).
-                String ownerStr = tData.getOwnerName().equals("None") ? "" : tData.getOwnerName();
-                if (!ownerStr.isEmpty()) {
-                    int ownerWidth = fm.stringWidth(ownerStr);
-                    g2d.setColor(isColorDark(tData.getOwnerColor()) ? Color.WHITE : Color.BLACK);
-                    g2d.drawString(ownerStr, x - ownerWidth / 2, y - r / 3);
-                    g2d.setColor(Color.BLACK);
-                }
-
-                // 3) Units.
-                List<Integer> levels = new ArrayList<>(tData.getUnits().keySet());
-                Collections.sort(levels);
-                StringBuilder unitsStr = new StringBuilder();
-                for (int level : levels) {
-                    unitsStr.append("L").append(level).append(":")
-                            .append(tData.getUnits().get(level)).append(" ");
-                }
-                if (unitsStr.length() == 0) {
-                    unitsStr.append("No Units");
-                }
-                int unitsWidth = fm.stringWidth(unitsStr.toString().trim());
-                g2d.setColor(isColorDark(tData.getOwnerColor()) ? Color.WHITE : Color.BLACK);
-                g2d.drawString(unitsStr.toString().trim(), x - unitsWidth / 2, y + textHeight / 2);
-                g2d.setColor(Color.BLACK);
-
-                // 4) Size & Resource Production (below the circle).
-                currentY = y + r + textHeight + 2;
-                String sizeStr = "Sz:" + tData.getSize();
-                String prodStr = "F:" + tData.getFoodProduction() + " T:" + tData.getTechProduction();
-                g2d.drawString(sizeStr, x - fm.stringWidth(sizeStr) / 2, currentY);
-                currentY += textHeight;
-                g2d.drawString(prodStr, x - fm.stringWidth(prodStr) / 2, currentY);
-            }
-        }
-
-        // --- Draw Move Orders ---
-        drawMoveOrders(g2d);
-    }
-
-    /**
-     * Draws a legend in the top-left corner to explain the map elements.
-     */
-    private void drawLegend(Graphics2D g2d) {
-        g2d.setColor(Color.BLACK);
-        int legendX = 20;
-        int legendY = 20;
-        g2d.drawString("Legend:", legendX, legendY);
-        g2d.drawString("• Circle represents Territory", legendX, legendY + 15);
-        g2d.drawString("• Line represents Adjacency (Movable/Attackable)", legendX, legendY + 30);
-        g2d.drawString("• Sz=Size, F=Food, T=Tech (Resource Production)", legendX, legendY + 45);
-        g2d.drawString("• Arrow indicates Movement", legendX, legendY + 60);
-    }
-
-    /**
-     * Draws the move orders as arrows on the map.
-     */
-    private void drawMoveOrders(Graphics2D g2d) {
-        if (moveOrders == null || moveOrders.isEmpty()) {
+        drawLegend(g2);
+        if (terrs.isEmpty()) {
+            g2.drawString("Map not ready", 50, 80);
             return;
         }
-        g2d.setColor(Color.MAGENTA);
-        g2d.setStroke(new BasicStroke(3));
-        for (MoveOrder order : moveOrders) {
-            // Get source and destination centers from the territory positions using getSourceName() and getDestName().
-            ClientTerritoryData src = territoriesData.get(order.getSourceName());
-            ClientTerritoryData dest = territoriesData.get(order.getDestName());
-            if (src != null && dest != null) {
-                int x1 = src.getX();
-                int y1 = src.getY();
-                int x2 = dest.getX();
-                int y2 = dest.getY();
-                drawArrow(g2d, x1, y1, x2, y2);
-                // Draw the move order text along the arrow.
-                String text = "L" + order.getLevel() + " x" + order.getNumUnits();
-                int tx = (x1 + x2) / 2;
-                int ty = (y1 + y2) / 2;
-                g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
-                g2d.drawString(text, tx, ty);
+        drawLinks(g2);
+        drawTerritories(g2);
+        drawMoves(g2);
+    }
+
+    private void drawLegend(Graphics2D g) {
+        int x = 20, y = 20;
+        g.drawString("Legend:", x, y);
+        g.drawString("Circle = Territory", x, y + 15);
+        g.drawString("Gray line = Adjacency", x, y + 30);
+        g.drawString("Arrow = Move", x, y + 45);
+    }
+
+    private void drawLinks(Graphics2D g) {
+        g.setColor(Color.GRAY);
+        g.setStroke(new BasicStroke(2));
+
+        Set<String> seen = new HashSet<>();
+        terrs.values().forEach(src -> src.neighborNames.forEach(n -> {
+            ClientTerritoryData dst = terrs.get(n);
+            if (dst != null) {
+                String k = src.name + "-" + n, rev = n + "-" + src.name;
+                if (seen.add(k) && seen.add(rev))
+                    g.drawLine(src.x, src.y, dst.x, dst.y);
+            }
+        }));
+    }
+
+    private void drawTerritories(Graphics2D g) {
+        for (ClientTerritoryData t : terrs.values()) {
+            int r = t.radius, x = t.x, y = t.y;
+
+            /* 圆形 & 边框 */
+            g.setColor(t.ownerColor);
+            g.fillOval(x - r, y - r, 2 * r, 2 * r);
+            g.setColor(Color.BLACK);
+            g.drawOval(x - r, y - r, 2 * r, 2 * r);
+
+            /* 领地名 */
+            g.setFont(NAME_FONT);
+            FontMetrics fmN = g.getFontMetrics();
+            g.drawString(t.name, x - fmN.stringWidth(t.name) / 2, y - r - 4);
+
+            /* 圆内显示 Owner */
+            g.setFont(getFont());
+            FontMetrics fm = g.getFontMetrics();
+            Color txtCol = isDark(t.ownerColor) ? Color.WHITE : Color.BLACK;
+            g.setColor(txtCol);
+            g.drawString(t.ownerName, x - fm.stringWidth(t.ownerName) / 2, y);
+            g.setColor(Color.BLACK);
+
+            /* 圆下按玩家显示部队 */
+            int offsetY = y + r + fm.getAscent();
+            for (Map.Entry<String, Map<Integer, Integer>> e : t.unitsByPlayer.entrySet()) {
+                StringBuilder sb = new StringBuilder(e.getKey()).append(": ");
+                e.getValue().entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .forEach(ev ->
+                                sb.append("L").append(ev.getKey())
+                                        .append(":").append(ev.getValue()).append(" "));
+                String line = sb.toString().trim();
+                g.drawString(line, x - fm.stringWidth(line) / 2, offsetY);
+                offsetY += fm.getAscent();
             }
         }
     }
 
-    /**
-     * Draws an arrow from (x1,y1) to (x2,y2).
-     */
-    private void drawArrow(Graphics2D g2d, int x1, int y1, int x2, int y2) {
-        // Draw main line.
-        g2d.drawLine(x1, y1, x2, y2);
-        // Draw arrowhead.
-        double phi = Math.toRadians(30);
-        int barb = 10;
-        double dy = y2 - y1;
-        double dx = x2 - x1;
-        double theta = Math.atan2(dy, dx);
-        double x, y;
-        for (int j = 0; j < 2; j++) {
-            double rho = theta + (j == 0 ? phi : -phi);
-            x = x2 - barb * Math.cos(rho);
-            y = y2 - barb * Math.sin(rho);
-            g2d.drawLine(x2, y2, (int)x, (int)y);
+    private void drawMoves(Graphics2D g) {
+        if (moves.isEmpty()) return;
+        g.setColor(Color.MAGENTA);
+        g.setStroke(new BasicStroke(3));
+
+        for (MoveOrder o : moves) {
+            ClientTerritoryData s = terrs.get(o.getSourceName());
+            ClientTerritoryData d = terrs.get(o.getDestName());
+            if (s == null || d == null) continue;
+
+            drawArrow(g, s.x, s.y, d.x, d.y);
+            String t = "L" + o.getLevel() + " x" + o.getNumUnits();
+            g.drawString(t, (s.x + d.x) / 2, (s.y + d.y) / 2);
         }
     }
 
-    // Helper method to decide if a color is dark (for choosing text color).
-    private boolean isColorDark(Color color) {
-        double darkness = 1 - (0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue()) / 255;
-        return darkness >= 0.5;
+    private void drawArrow(Graphics2D g, int x1, int y1, int x2, int y2) {
+        g.drawLine(x1, y1, x2, y2);
+        double phi = Math.toRadians(30);
+        int barb = 10;
+        double theta = Math.atan2(y2 - y1, x2 - x1);
+        for (int j = 0; j < 2; j++) {
+            double rho = theta + (j == 0 ? phi : -phi);
+            int x = (int) (x2 - barb * Math.cos(rho));
+            int y = (int) (y2 - barb * Math.sin(rho));
+            g.drawLine(x2, y2, x, y);
+        }
+    }
+
+    private boolean isDark(Color c) {
+        double d = 1 - (0.299 * c.getRed()
+                + 0.587 * c.getGreen()
+                + 0.114 * c.getBlue()) / 255.0;
+        return d >= 0.5;
     }
 }
