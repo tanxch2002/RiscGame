@@ -5,15 +5,13 @@ import java.net.Socket;
 import java.util.List;
 
 /**
- * ClientHandler is responsible for communicating with a single client.
- * In the run() method, it sends a basic welcome message, and then further interacts
- * with the user via methods like collectOrders() and collectInitialPlacement().
+ * Handles the interaction with a single client.
  */
 public class ClientHandler extends Thread {
     private final Socket socket;
     private final RiscServer server;
     private final int playerID;
-    private final PlayerAccount account; // Added to represent the login account
+    private final PlayerAccount account;
 
     private PrintWriter out;
     private BufferedReader in;
@@ -40,15 +38,11 @@ public class ClientHandler extends Thread {
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             out.println("Welcome, " + account.getUsername() + "! You are player #" + (playerID + 1));
-            // Further processing for client handshake and commands can be implemented here.
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Sends a text message to the client.
-     */
     public void sendMessage(String msg) {
         if (out != null) {
             out.println(msg);
@@ -56,15 +50,15 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * Collects the player's commands for the current turn (Move/Attack/Upgrade/TechUpgrade/Done).
+     * Collects the player's commands for the current turn.
      */
     public void collectOrders(Game game) {
         try {
             while (true) {
-                out.println("Enter an order (M/A/U/T/D): ");
+                out.println("Enter an order (M/A/U/T/D/C/FA): ");
                 String line = in.readLine();
                 if (line == null) {
-                    break; // Client disconnected.
+                    break; // Client disconnected
                 }
                 line = line.trim().toUpperCase();
 
@@ -87,12 +81,31 @@ public class ClientHandler extends Thread {
                     processUpgradeOrder(argsLine, game);
 
                 } else if (line.startsWith("T")) {
-                    // Initiate maximum technology level upgrade.
                     processTechUpgradeOrder(game);
 
                 } else if (line.startsWith("D")) {
                     out.println("All orders done for this turn.");
                     break;
+
+                }
+                // =============================
+                // NEW: C (Chat), FA (Alliance)
+                // =============================
+                else if (line.startsWith("C")) {
+                    out.println("Enter your chat message:");
+                    String chatMsg = in.readLine();
+                    if (chatMsg != null && !chatMsg.trim().isEmpty()) {
+                        String fullMsg = "[Player " + (playerID+1) + " - " + account.getUsername() + "]: " + chatMsg;
+                        server.broadcastMessage(fullMsg);
+                    }
+
+                } else if (line.startsWith("FA")) {
+                    out.println("Enter target player's username to form alliance:");
+                    String targetName = in.readLine();
+                    if (targetName != null && !targetName.trim().isEmpty()) {
+                        game.addOrder(new AllianceOrder(playerID, targetName.trim()));
+                        sendMessage("Alliance request sent to: " + targetName);
+                    }
 
                 } else {
                     out.println("Invalid command, please try again.");
@@ -104,7 +117,7 @@ public class ClientHandler extends Thread {
     }
 
     private void processMoveOrder(String argsLine, Game game) {
-        // Expected input format: sourceTerritory destinationTerritory level numUnits
+        // M <src> <dest> <level> <numUnits>
         String[] parts = argsLine.split("\\s+");
         if (parts.length == 4) {
             try {
@@ -114,7 +127,7 @@ public class ClientHandler extends Thread {
                 int units = Integer.parseInt(parts[3]);
 
                 game.addOrder(new MoveOrder(playerID, src, dest, level, units));
-                sendMessage("Move order added: level " + level + " x " + units +
+                sendMessage("Move order added: L" + level + " x" + units +
                         " from " + src + " -> " + dest);
             } catch (NumberFormatException e) {
                 sendMessage("Invalid number format for move order.");
@@ -125,8 +138,7 @@ public class ClientHandler extends Thread {
     }
 
     private void processAttackOrder(String argsLine, Game game) {
-        // Split the input.
-        // Expected format: sourceTerritory targetTerritory level numUnits
+        // A <src> <target> <level> <numUnits>
         String[] parts = argsLine.split("\\s+");
         if (parts.length == 4) {
             try {
@@ -135,9 +147,8 @@ public class ClientHandler extends Thread {
                 int level = Integer.parseInt(parts[2]);
                 int units = Integer.parseInt(parts[3]);
 
-                // Pass the level parameter to the AttackOrder constructor
                 game.addOrder(new AttackOrder(playerID, src, target, level, units));
-                sendMessage("Attack order added: level " + level + " x " + units +
+                sendMessage("Attack order added: L" + level + " x" + units +
                         " from " + src + " => " + target);
             } catch (NumberFormatException e) {
                 sendMessage("Invalid number format for attack order.");
@@ -147,11 +158,8 @@ public class ClientHandler extends Thread {
         }
     }
 
-    /**
-     * Processes the unit upgrade command: UpgradeUnitOrder.
-     */
     private void processUpgradeOrder(String argsLine, Game game) {
-        // Expected input format: territoryName currentLevel targetLevel numUnits
+        // U <territory> <currentLevel> <targetLevel> <numUnits>
         String[] parts = argsLine.split("\\s+");
         if (parts.length == 4) {
             try {
@@ -169,17 +177,12 @@ public class ClientHandler extends Thread {
         }
     }
 
-    /**
-     * Processes the maximum technology upgrade command: TechUpgradeOrder.
-     */
     private void processTechUpgradeOrder(Game game) {
+        // T => TechUpgrade
         game.addOrder(new TechUpgradeOrder(playerID));
         sendMessage("Tech upgrade order added.");
     }
 
-    /**
-     * Collects the player's initial unit placement, assigning the initial units to the player's territories.
-     */
     public void collectInitialPlacement(Game game) {
         int remainingUnits = game.getInitialUnits();
         Player player = game.getPlayer(playerID);
@@ -195,19 +198,18 @@ public class ClientHandler extends Thread {
                     int units = Integer.parseInt(input.trim());
                     if (units < 0 || units > remainingUnits) {
                         sendMessage("Invalid input, please enter a number between 0 and " + remainingUnits);
-                        i--; // Retry
+                        i--;
                         continue;
                     }
-                    // For demonstration, allocate all as level 0 units.
-                    t.addUnits(0, units);
+                    // NEW: 多家驻军 => addUnits(playerID, level0, units)
+                    t.addUnits(playerID, 0, units);
                     remainingUnits -= units;
                 } catch (IOException | NumberFormatException e) {
                     sendMessage("Error reading input, please re-enter.");
                     i--;
                 }
             } else {
-                // Automatically allocate the remaining units to the last territory.
-                t.addUnits(0, remainingUnits);
+                t.addUnits(playerID, 0, remainingUnits);
                 sendMessage("Territory " + t.getName() + " automatically allocated the remaining " + remainingUnits + " units.");
                 remainingUnits = 0;
             }
@@ -215,16 +217,13 @@ public class ClientHandler extends Thread {
         sendMessage("Initial unit placement completed!");
     }
 
-    /**
-     * Closes the connection with the client.
-     */
     public void closeConnection() {
         try {
             if (in != null) in.close();
             if (out != null) out.close();
             socket.close();
         } catch (IOException e) {
-            // Ignore exceptions during close.
+            // ignore
         }
     }
 }
