@@ -25,86 +25,42 @@ public class Player {
         this.territories = new ArrayList<>();
         this.food = 100;
         this.tech = 0;
-
         this.allies = new HashSet<>();
     }
 
-    public int getId() {
-        return id;
-    }
-    public String getName() {
-        return name;
-    }
+    /* ---------- 基本信息 ---------- */
+    public int getId() { return id; }
+    public String getName() { return name; }
     public void setName(String newName) { this.name = newName; }
 
-    public boolean isAlive() {
-        return alive;
-    }
-    public void setAlive(boolean alive) {
-        this.alive = alive;
-    }
+    /* ---------- AI 标识：默认为真人 ---------- */
+    public boolean isAI() { return false; }
 
-    public List<Territory> getTerritories() {
-        return territories;
-    }
-    public void addTerritory(Territory t) {
-        if (!territories.contains(t)) {
-            territories.add(t);
-        }
-    }
-    public void removeTerritory(Territory t) {
-        territories.remove(t);
-    }
+    /* ---------- 生存状态 & 领地 ---------- */
+    public boolean isAlive() { return alive; }
+    public void setAlive(boolean alive) { this.alive = alive; }
 
-    public int getFood() {
-        return food;
-    }
-    public int getTech() {
-        return tech;
-    }
-    public void addFood(int delta) {
-        this.food += delta;
-    }
-    public void addTech(int delta) {
-        this.tech += delta;
-    }
-    public boolean spendFood(int amt) {
-        if (food < amt) return false;
-        food -= amt;
-        return true;
-    }
-    public boolean spendTech(int amt) {
-        if (tech < amt) return false;
-        tech -= amt;
-        return true;
-    }
+    public List<Territory> getTerritories() { return territories; }
+    public void addTerritory(Territory t) { if (!territories.contains(t)) territories.add(t); }
+    public void removeTerritory(Territory t) { territories.remove(t); }
 
-    public int getMaxTechLevel() {
-        return maxTechLevel;
-    }
-    public boolean isTechUpgrading() {
-        return isTechUpgrading;
-    }
-    public void startTechUpgrade(int nextLevel) {
-        this.isTechUpgrading = true;
-        this.nextTechLevel = nextLevel;
-    }
-    public void finishTechUpgrade() {
-        this.isTechUpgrading = false;
-        this.maxTechLevel = nextTechLevel;
-    }
+    /* ---------- 资源 ---------- */
+    public int getFood() { return food; }
+    public int getTech() { return tech; }
+    public void addFood(int delta) { this.food += delta; }
+    public void addTech(int delta) { this.tech += delta; }
+    public boolean spendFood(int amt) { if (food < amt) return false; food -= amt; return true; }
+    public boolean spendTech(int amt) { if (tech < amt) return false; tech -= amt; return true; }
 
-    // NEW: Allies
-    public void addAlly(int otherID) {
-        allies.add(otherID);
-    }
-    public void removeAlly(int otherID) {
-        allies.remove(otherID);
-    }
-    public boolean isAlliedWith(int otherID) {
-        return allies.contains(otherID);
-    }
-    public Set<Integer> getAllies() {
-        return allies;
-    }
+    /* ---------- 科技 ---------- */
+    public int getMaxTechLevel() { return maxTechLevel; }
+    public boolean isTechUpgrading() { return isTechUpgrading; }
+    public void startTechUpgrade(int nextLevel) { isTechUpgrading = true; nextTechLevel = nextLevel; }
+    public void finishTechUpgrade() { isTechUpgrading = false; maxTechLevel = nextTechLevel; }
+
+    /* ---------- 结盟 ---------- */
+    public void addAlly(int otherID) { allies.add(otherID); }
+    public void removeAlly(int otherID) { allies.remove(otherID); }
+    public boolean isAlliedWith(int otherID) { return allies.contains(otherID); }
+    public Set<Integer> getAllies() { return allies; }
 }
