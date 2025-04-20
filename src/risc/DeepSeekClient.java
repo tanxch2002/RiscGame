@@ -7,7 +7,6 @@ import java.net.http.HttpResponse;
 
 /**
  * 极简 DeepSeek 大模型 HTTP 调用封装。
- * 注意：请将 YOUR_API_KEY 换成实际密钥，或改为读取环境变量。
  */
 public class DeepSeekClient {
     private static final String ENDPOINT = "https://api.deepseek.com/chat/completions";

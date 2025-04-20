@@ -139,7 +139,7 @@ public class GlobalServer {
      */
     private String selectOrCreateGame(BufferedReader in, PrintWriter out) throws IOException {
         out.println("Existing games: " + games.keySet());
-        out.println("Use: 'join <gameID>' or 'new <numPlayers>' to create a new game");
+        out.println("Use: 'join <gameID>' or 'new <numPlayers> [ai]' to create a new game");
         while (true) {
             String line = in.readLine();
             if (line == null) return null;
@@ -151,28 +151,28 @@ public class GlobalServer {
                 } else {
                     out.println("Game not found. Try again.");
                 }
+
             } else if (line.startsWith("new")) {
-                // new 3
                 String[] parts = line.split("\\s+");
-                if (parts.length == 2) {
+                if (parts.length >= 2) {
                     try {
-                        int desiredPlayers = Integer.parseInt(parts[1]);
-                        // Create a new game
+                        int humanCount = Integer.parseInt(parts[1]);
+                        boolean includeAI = parts.length >= 3 && parts[2].equalsIgnoreCase("ai");
                         String newID = UUID.randomUUID().toString().substring(0, 8);
-                        RiscServer rs = new RiscServer(desiredPlayers, newID);
+                        RiscServer rs = new RiscServer(humanCount, newID, includeAI);
                         games.put(newID, rs);
-                        // Start the main logic of the RiscServer (such as waiting for players to join, starting the game, etc.)
                         rs.startServerLogic();
-                        out.println("New game created. ID=" + newID);
+                        out.println("New game created. ID=" + newID + (includeAI ? " (with AI)" : " (no AI)"));
                         return newID;
                     } catch (NumberFormatException ex) {
                         out.println("Invalid numPlayers. Try again.");
                     }
                 } else {
-                    out.println("Usage: new <numPlayers>");
+                    out.println("Usage: new <numPlayers> [ai]");
                 }
+
             } else {
-                out.println("Invalid input. Use 'join <id>' or 'new <num>'.");
+                out.println("Invalid input. Use 'join <id>' or 'new <numPlayers> [ai]'.");
             }
         }
     }

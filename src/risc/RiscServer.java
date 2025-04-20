@@ -8,26 +8,24 @@ import java.util.*;
  * Multiplayer game room server with optional DeepSeek AI player.
  */
 public class RiscServer {
-    public static final int MIN_PLAYERS = 2;
-    public static final int MAX_PLAYERS = 5;
-
     private final String gameID;
-    private final int   desiredHumanPlayers; // 人类玩家数量
+    private final int desiredHumanPlayers;
+    private final boolean includeAI;
     private final List<ClientHandler> clientHandlers;
-    private final Game  game;
-
-    /* --- 新增: AI --- */
-    private AIController aiController;   // 只有 1 个 Bot，如需多个可用列表
+    private final Game game;
+    private AIController aiController;
     private static final String BOT_NAME = "DeepSeekBot";
-
     private boolean started = false;
 
-    public RiscServer(int desiredHumanPlayers, String gameID) {
-        this.desiredHumanPlayers   = desiredHumanPlayers;
+
+    public RiscServer(int desiredHumanPlayers, String gameID, boolean includeAI) {
+        this.desiredHumanPlayers = desiredHumanPlayers;
         this.gameID = gameID;
+        this.includeAI = includeAI;
         this.clientHandlers = new ArrayList<>();
         this.game = new Game(this);
-        this.game.setUpMap(desiredHumanPlayers + 1); // 预留 1 个 AI
+        int totalSlots = desiredHumanPlayers + (includeAI ? 1 : 0);
+        game.setUpMap(totalSlots);
     }
 
     /* ================================================= */
@@ -69,34 +67,31 @@ public class RiscServer {
     /*                    游戏流程                       */
     /* ================================================= */
     private void startGame() {
-        /* ---------- 创建玩家（人类 + AI） ---------- */
-        int totalPlayers = clientHandlers.size() + 1;              // +1 AI
+        int totalPlayers = desiredHumanPlayers + (includeAI ? 1 : 0);
         game.initPlayers(totalPlayers);
 
-        /* 设置人类玩家名字 */
+        // Set human player names
         for (int i = 0; i < clientHandlers.size(); i++) {
             Player p = game.getPlayer(i);
             p.setName(clientHandlers.get(i).getAccount().getUsername());
         }
 
-        /* ---------- 创建 AIPlayer 并接管最后一个玩家的领地 ---------- */
-        int botID = totalPlayers - 1;
-        Player prev = game.getPlayer(botID);          // 旧的占位玩家
-        AIPlayer bot = new AIPlayer(botID, BOT_NAME);
-
-        /* 把领地转给 bot */
-        for (Territory terr : prev.getTerritories()) {
-            terr.setOwner(bot);        // 更新地块归属
-            bot.addTerritory(terr);    // 加入 bot 的领地清单
+        // If AI is enabled, set up the bot
+        if (includeAI) {
+            int botID = totalPlayers - 1;
+            Player prev = game.getPlayer(botID);
+            AIPlayer bot = new AIPlayer(botID, BOT_NAME);
+            for (Territory terr : prev.getTerritories()) {
+                terr.setOwner(bot);
+                bot.addTerritory(terr);
+            }
+            game.getAllPlayers().set(botID, bot);
+            aiController = new AIController(game, bot);
+            broadcastMessage("AI player [" + BOT_NAME + "] has joined the game!\n");
         }
-        /* 用 bot 替换 players 列表中的最后一位 */
-        game.getAllPlayers().set(botID, bot);
 
-        /* 为 AI 创建控制器 */
-        aiController = new AIController(game, bot);
-
-
-        broadcastMessage("All players connected. AI 玩家 [" + BOT_NAME + "] 加入战局！\n");
+        broadcastMessage("All players connected. " + (includeAI ? "Including AI. " : "")
+                + "Each player has " + game.getInitialUnits() + " initial units.\n");
         broadcastMessage("每位玩家拥有 " + game.getInitialUnits() + " 个初始单位进行部署。\n");
 
         /* ---------- 初始布兵阶段 ---------- */
@@ -168,7 +163,9 @@ public class RiscServer {
         }
 
         /* AI 玩家同步布兵（不占线程） */
-        aiController.doInitialPlacement();
+        if (includeAI) {
+            aiController.doInitialPlacement();
+        }
 
         /* 等待人类完成 */
         for (Thread th : threads) {
@@ -199,7 +196,10 @@ public class RiscServer {
         }
 
         /* AI 出招 */
-        aiController.generateTurnOrders();
+        if(includeAI && aiController != null) {
+            aiController.generateTurnOrders();
+        }
+
     }
 
     /* ---------- 移除阵亡人类玩家 ---------- */
