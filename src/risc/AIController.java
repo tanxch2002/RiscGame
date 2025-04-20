@@ -151,12 +151,17 @@ public class AIController {
                 .append("------\n\n")
                 // 最后再附上指令格式
                 .append("===合法指令格式===\n")
-                .append("M <src> <dest> <level> <numUnits>\n")
-                .append("A <src> <dest> <level> <numUnits>\n")
-                .append("U <territory> <curLvl> <tgtLvl> <numUnits>\n")
-                .append("T\n")
-                .append("FA <username>\n")
-                .append("D   （必须最后输出）\n");
+                .append("请在同一回合中，依次输出若干行命令，最后一行必须是 `D`，表示结束下令。生成以下命令时，")
+                .append("务必先确认你拥有足够的 Food 或 Tech：\n\n")
+                .append("  - `M <src> <dst> <level> <num>`：移动 —— **仅限在你拥有的领地之间移动**，")
+                .append("移动消耗 = 路径总Size × 单位数，生成前请确保 Food ≥ 消耗。\n\n")
+                .append("  - `A <src> <dst> <level> <num>`：攻击 —— **仅限攻击与你领地相邻且不属于你的领地**，")
+                .append("攻击消耗 = 1 × 单位数，生成前请确保 Food ≥ 消耗。\n\n")
+                .append("  - `U <territory> <curLvl> <tgtLvl> <num>`：部队升级 ——")
+                .append("消耗 Tech = (tgtLvl − curLvl) × 单位数，生成前请确保 Tech ≥ 消耗。\n\n")
+                .append("  - `T`：科技等级升级 ——消耗以固定表格为准，次回合生效，请确保 Tech ≥ 升级所需。\n\n")
+                .append("  - `FA <playerName>`：结盟请求（需双方同时下达才生效）。\n\n")
+                .append("最后一行：`D`（必须单独一行，表示结束输入）。\n");
 
         return sb.toString();
     }
