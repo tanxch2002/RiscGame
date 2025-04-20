@@ -121,6 +121,19 @@ public class RiscServer {
             game.executeAllAttackOrders();
             game.executeAllAlliances();
             game.executeAllUpgrades();
+
+            /* ------------- 新增：广播 AI 资源 ------------- */
+            Player aiPlayer = game.getAllPlayers()
+                    .stream()
+                    .filter(Player::isAI)
+                    .findFirst()
+                    .orElse(null);
+            if (aiPlayer != null && aiPlayer.isAlive()) {
+                broadcastMessage("DeepSeekBot 当前资源 -> Food: "
+                        + aiPlayer.getFood() + ", Tech: " + aiPlayer.getTech());
+            }
+            /* ------------------------------------------- */
+
             game.clearAllOrders();
 
             game.endTurn();
