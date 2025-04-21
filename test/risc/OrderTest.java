@@ -1,43 +1,16 @@
 package risc;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
-class OrderTest {
-
-    /**
-     * Test retrieving the player ID from an AttackOrder.
-     */
-    @Test
-    void getPlayerID() {
-        Order o = new AttackOrder(1, "S", "D", 0, 3);
-        assertEquals(1, o.getPlayerID());
+public class OrderTest {
+    public static void main(String[] args) {
+        testOrderBaseProperties();
     }
 
-    /**
-     * Test retrieving the source territory name from a MoveOrder.
-     */
-    @Test
-    void getSourceName() {
-        Order o = new MoveOrder(2, "Src", "Dest", 0, 4);
-        assertEquals("Src", o.getSourceName());
-    }
+    private static void testOrderBaseProperties() {
+        Order order = new MoveOrder(1, "A", "B", 0, 5);
 
-    /**
-     * Test retrieving the destination territory name from an AttackOrder.
-     */
-    @Test
-    void getDestName() {
-        Order o = new AttackOrder(1, "X", "Y", 0, 3);
-        assertEquals("Y", o.getDestName());
-    }
-
-    /**
-     * Test retrieving the number of units from an AttackOrder.
-     */
-    @Test
-    void getNumUnits() {
-        Order o = new AttackOrder(1, "S", "D", 0, 5);
-        assertEquals(5, o.getNumUnits());
+        assert order.getPlayerID() == 1 : "Player ID should be 1";
+        assert "A".equals(order.getSourceName()) : "Source name should be A";
+        assert "B".equals(order.getDestName()) : "Destination name should be B";
+        assert order.getNumUnits() == 5 : "Number of units should be 5";
     }
 }

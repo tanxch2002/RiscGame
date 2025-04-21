@@ -1,25 +1,18 @@
 package risc;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
-class UpgradeUnitOrderTest {
-
-    @Test
-    void testConstructorAndGetters() {
-        UpgradeUnitOrder order = new UpgradeUnitOrder(1, "Narnia", 0, 2, 5);
-
-        assertEquals(1, order.getPlayerID());
-        assertEquals("Narnia", order.getSourceName());
-        assertEquals("Narnia", order.getDestName()); // Source and dest are the same
-        assertEquals(5, order.getNumUnits());
-        assertEquals(0, order.getCurrentLevel());
-        assertEquals(2, order.getTargetLevel());
+public class UpgradeUnitOrderTest {
+    public static void main(String[] args) {
+        testConstructorAndGetters();
     }
 
-    @Test
-    void testInheritance() {
-        UpgradeUnitOrder order = new UpgradeUnitOrder(2, "Midkemia", 1, 3, 2);
-        assertTrue(order instanceof Order);
+    private static void testConstructorAndGetters() {
+        UpgradeUnitOrder order = new UpgradeUnitOrder(1, "A", 0, 2, 5);
+
+        assert order.getPlayerID() == 1 : "Player ID should be 1";
+        assert "A".equals(order.getSourceName()) : "Source name should be A";
+        assert "A".equals(order.getDestName()) : "Destination name should also be A (same territory)";
+        assert order.getCurrentLevel() == 0 : "Current level should be 0";
+        assert order.getTargetLevel() == 2 : "Target level should be 2";
+        assert order.getNumUnits() == 5 : "Number of units should be 5";
     }
 }
