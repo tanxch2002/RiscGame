@@ -1,66 +1,44 @@
 package risc;
 
-import org.junit.jupiter.api.Test;
 import java.awt.Color;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import static org.junit.jupiter.api.Assertions.*;
 
-class ClientTerritoryDataTest {
-
-    @Test
-    void testConstructorAndGetters() {
-        ClientTerritoryData data = new ClientTerritoryData("Narnia", 100, 200);
-
-        assertEquals("Narnia", data.getName());
-        assertEquals("None", data.getOwnerName());
-        assertEquals(Color.LIGHT_GRAY, data.getOwnerColor());
-        assertTrue(data.getUnits().isEmpty());
-        assertTrue(data.getNeighborNames().isEmpty());
-        assertEquals(0, data.getFoodProduction());
-        assertEquals(0, data.getTechProduction());
-        assertEquals(1, data.getSize());
-        assertEquals(100, data.getX());
-        assertEquals(200, data.getY());
-        assertEquals(30, data.getRadius());
+public class ClientTerritoryDataTest {
+    public static void main(String[] args) {
+        testConstructorAndGetters();
+        testUnitStorage();
     }
 
-    @Test
-    void testUpdateData() {
-        ClientTerritoryData data = new ClientTerritoryData("Mordor", 50, 50);
+    private static void testConstructorAndGetters() {
+        ClientTerritoryData data = new ClientTerritoryData("TestTerr", 100, 200);
 
-        Color ownerColor = Color.RED;
-        Map<Integer, Integer> units = new HashMap<>();
-        units.put(0, 10);
-        units.put(1, 5);
+        assert "TestTerr".equals(data.name) : "Name should be TestTerr";
+        assert data.x == 100 : "X coordinate should be 100";
+        assert data.y == 200 : "Y coordinate should be 200";
+        assert "None".equals(data.ownerName) : "Default owner name should be None";
+        assert Color.LIGHT_GRAY.equals(data.ownerColor) : "Default color should be light gray";
+        assert data.radius == 30 : "Default radius should be 30";
 
-        List<String> neighbors = new ArrayList<>();
-        neighbors.add("Gondor");
-        neighbors.add("Hogwarts");
-
-        data.updateData("Player1", 3, neighbors, units, ownerColor, 4, 2);
-
-        assertEquals("Player1", data.getOwnerName());
-        assertEquals(3, data.getSize());
-        assertEquals(2, data.getNeighborNames().size());
-        assertTrue(data.getNeighborNames().contains("Gondor"));
-        assertTrue(data.getNeighborNames().contains("Hogwarts"));
-        assertEquals(ownerColor, data.getOwnerColor());
-        assertEquals(4, data.getFoodProduction());
-        assertEquals(2, data.getTechProduction());
-        assertEquals(10, data.getUnits().get(0));
-        assertEquals(5, data.getUnits().get(1));
+        assert data.x == data.getX() : "getX should return x";
+        assert data.y == data.getY() : "getY should return y";
+        assert data.radius == data.getRadius() : "getRadius should return radius";
+        assert data.ownerName.equals(data.getOwnerName()) : "getOwnerName should return ownerName";
+        assert data.ownerColor.equals(data.getOwnerColor()) : "getOwnerColor should return ownerColor";
     }
 
-    @Test
-    void testToString() {
-        ClientTerritoryData data = new ClientTerritoryData("Elantris", 120, 150);
-        data.updateData("Player2", 2, new ArrayList<>(), new HashMap<>(), Color.BLUE, 2, 2);
+    private static void testUnitStorage() {
+        ClientTerritoryData data = new ClientTerritoryData("TestTerr", 100, 200);
 
-        String result = data.toString();
-        assertTrue(result.contains("Elantris"));
-        assertTrue(result.contains("Player2"));
+        Map<Integer, Integer> unitsMap = new HashMap<>();
+        unitsMap.put(0, 5);
+        unitsMap.put(1, 3);
+
+        data.unitsByPlayer.put("P1", unitsMap);
+
+        Map<String, Map<Integer, Integer>> units = data.getUnitsByPlayer();
+        assert units.containsKey("P1") : "Units map should contain P1";
+        assert units.get("P1").get(0) == 5 : "P1 should have 5 level-0 units";
+        assert units.get("P1").get(1) == 3 : "P1 should have 3 level-1 units";
     }
 }

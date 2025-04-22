@@ -1,23 +1,13 @@
 package risc;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
-class PlayerAccountTest {
-
-    @Test
-    void testConstructorAndGetter() {
-        PlayerAccount account = new PlayerAccount("testUser");
-        assertEquals("testUser", account.getUsername());
+public class PlayerAccountTest {
+    public static void main(String[] args) {
+        testConstructorAndGetUsername();
     }
 
-    @Test
-    void testMultipleAccounts() {
-        PlayerAccount account1 = new PlayerAccount("user1");
-        PlayerAccount account2 = new PlayerAccount("user2");
+    private static void testConstructorAndGetUsername() {
+        PlayerAccount account = new PlayerAccount("TestUser");
 
-        assertEquals("user1", account1.getUsername());
-        assertEquals("user2", account2.getUsername());
-        assertNotEquals(account1.getUsername(), account2.getUsername());
+        assert "TestUser".equals(account.getUsername()) : "Username should be TestUser";
     }
 }

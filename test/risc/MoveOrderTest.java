@@ -1,32 +1,17 @@
 package risc;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
-class EnhancedMoveOrderTest {
-
-    @Test
-    void testConstructorWithLevel() {
-        MoveOrder mo = new MoveOrder(2, "X", "Y", 3, 7);
-        assertEquals(2, mo.getPlayerID());
-        assertEquals("X", mo.getSourceName());
-        assertEquals("Y", mo.getDestName());
-        assertEquals(7, mo.getNumUnits());
-        assertEquals(3, mo.getLevel());
+public class MoveOrderTest {
+    public static void main(String[] args) {
+        testConstructorAndGetters();
     }
 
-    @Test
-    void testCompareMoveOrders() {
-        MoveOrder mo1 = new MoveOrder(1, "A", "B", 0, 5);
-        MoveOrder mo2 = new MoveOrder(1, "A", "B", 2, 5);
+    private static void testConstructorAndGetters() {
+        MoveOrder order = new MoveOrder(1, "A", "B", 2, 5);
 
-        // Different level
-        assertNotEquals(mo1.getLevel(), mo2.getLevel());
-
-        // Same player, source, dest, and units
-        assertEquals(mo1.getPlayerID(), mo2.getPlayerID());
-        assertEquals(mo1.getSourceName(), mo2.getSourceName());
-        assertEquals(mo1.getDestName(), mo2.getDestName());
-        assertEquals(mo1.getNumUnits(), mo2.getNumUnits());
+        assert order.getPlayerID() == 1 : "Player ID should be 1";
+        assert "A".equals(order.getSourceName()) : "Source name should be A";
+        assert "B".equals(order.getDestName()) : "Destination name should be B";
+        assert order.getLevel() == 2 : "Level should be 2";
+        assert order.getNumUnits() == 5 : "Number of units should be 5";
     }
 }

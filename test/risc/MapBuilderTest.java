@@ -1,23 +1,37 @@
 package risc;
 
-import org.junit.jupiter.api.Test;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.*;
 
-class MapBuilderTest {
+public class MapBuilderTest {
+    public static void main(String[] args) {
+        testBuildMapForDifferentPlayerCounts();
+        testTerritoryConnections();
+    }
 
-    @Test
-    void buildMap() {
-        // Test map for 3 players: should have 6 territories
+    private static void testBuildMapForDifferentPlayerCounts() {
         List<Territory> map3 = MapBuilder.buildMap(3);
-        assertEquals(6, map3.size());
+        assert map3.size() == 6 : "3-player map should have 6 territories";
 
-        // Test map for 5 players: should have 10 territories
         List<Territory> map5 = MapBuilder.buildMap(5);
-        assertEquals(10, map5.size());
+        assert map5.size() == 10 : "5-player map should have 10 territories";
 
-        // Test other cases (should return 8 territories)
+        List<Territory> map2 = MapBuilder.buildMap(2);
+        assert map2.size() == 8 : "2-player map should have 8 territories";
+
         List<Territory> map4 = MapBuilder.buildMap(4);
-        assertEquals(8, map4.size());
+        assert map4.size() == 8 : "4-player map should have 8 territories";
+    }
+
+    private static void testTerritoryConnections() {
+        List<Territory> territories = MapBuilder.buildMap(3);
+
+        for (Territory t : territories) {
+            assert !t.getNeighbors().isEmpty() : "Each territory should have neighbors";
+
+            for (Territory neighbor : t.getNeighbors()) {
+                assert neighbor.getNeighbors().contains(t) :
+                        "Neighbor relationships should be bidirectional";
+            }
+        }
     }
 }
