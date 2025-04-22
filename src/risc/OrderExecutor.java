@@ -5,7 +5,7 @@ import java.util.*;
 public class OrderExecutor {
     private final Game game;
 
-    // 示例：升级/战斗数据
+    // Example data for unit upgrade costs and combat bonuses
     private static final int[] UNIT_TOTAL_COST = {0, 3, 8, 19, 25, 35, 50};
     private static final int[] UNIT_BONUS      = {0, 1, 3,  5,  8, 11, 15};
 
@@ -23,7 +23,7 @@ public class OrderExecutor {
     }
 
     // ===================================
-    // 1) Move
+    // 1) Move Orders
     // ===================================
     public void executeMoveOrders() {
         List<MoveOrder> moves = new ArrayList<>();
@@ -42,7 +42,7 @@ public class OrderExecutor {
             int level = m.getLevel();
             int units = m.getNumUnits();
 
-            // 计算移动消耗
+            // Calculate movement cost
             int pathCost = findMinPathSizeSum(src, dest, p);
             if (pathCost < 0) {
                 continue;
@@ -51,11 +51,11 @@ public class OrderExecutor {
             if (!p.spendFood(foodCost)) {
                 continue;
             }
-            // 在src移除部队
+            // Remove units from source
             if (!src.removeUnits(p.getId(), level, units)) {
                 continue;
             }
-            // 在dest添加部队
+            // Add units to destination
             dest.addUnits(p.getId(), level, units);
             game.broadcast(p.getName() + " moves " + units + " L" + level + " from "
                     + src.getName() + " to " + dest.getName());
@@ -68,12 +68,11 @@ public class OrderExecutor {
         Territory dest = game.getTerritoryByName(m.getDestName());
         if (src == null || dest == null) return false;
 
-        // 只允许在自己或盟友领地进行移动
-        // src必须是自己或盟友控制, dest亦必须是自己或盟友控制
+        // Only allow moves within territories owned by the player or their allies
         if (!isOwnedOrAllied(src, p)) return false;
         if (!isOwnedOrAllied(dest, p)) return false;
 
-        // 是否src里有足够单位
+        // Check if source has enough units
         Map<Integer,Integer> srcMap = src.getStationedUnitsMap(p.getId());
         int have = srcMap.getOrDefault(m.getLevel(), 0);
         return have >= m.getNumUnits();
@@ -88,7 +87,9 @@ public class OrderExecutor {
     }
 
     /**
-     * BFS寻找自己或盟友领地的最短路径，返回size之和
+     * Uses BFS to find the minimum sum of territory sizes along a path through
+     * territories owned by the player or their allies.
+     * Returns the sum of sizes, or -1 if no valid path exists.
      */
     private int findMinPathSizeSum(Territory start, Territory end, Player p) {
         Queue<PathNode> queue = new LinkedList<>();
@@ -123,10 +124,10 @@ public class OrderExecutor {
     }
 
     // ===================================
-    // 2) Alliance
+    // 2) Alliance Orders
     // ===================================
     public void executeAllianceOrders() {
-        // 收集发起方 -> 结盟请求列表
+        // Collect alliance requests: initiator -> list of target names
         Map<Integer, List<String>> allianceRequests = new HashMap<>();
         for (Order o : game.getAllOrders()) {
             if (o instanceof AllianceOrder) {
@@ -137,13 +138,13 @@ public class OrderExecutor {
             }
         }
 
-        // username -> playerID
+        // Map usernames to player IDs
         Map<String, Integer> nameToId = new HashMap<>();
         for (Player p : game.getAllPlayers()) {
             nameToId.put(p.getName(), p.getId());
         }
 
-        // 双向匹配
+        // Match requests bidirectionally
         for (Map.Entry<Integer, List<String>> entry : allianceRequests.entrySet()) {
             int pA = entry.getKey();
             Player playerA = game.getPlayer(pA);
@@ -151,24 +152,21 @@ public class OrderExecutor {
 
             for (String targetName : entry.getValue()) {
                 Integer pB = nameToId.get(targetName);
-                // === 新增检查：pB为null 或 pB == pA => 跳过，不能与自己结盟 ===
+                // Skip invalid or self-targeted requests
                 if (pB == null || pB == pA) {
-                    // 可选：给玩家A一个提示信息，如:
-                    // game.broadcast(playerA.getName() + " tried to form alliance with invalid target: " + targetName);
                     continue;
                 }
 
                 Player playerB = game.getPlayer(pB);
                 if (!playerB.isAlive()) continue;
 
-                // 看 B 是否也向 A 发起了请求
+                // Check if B also requested alliance with A
                 List<String> bRequests = allianceRequests.get(pB);
                 if (bRequests != null && bRequests.contains(playerA.getName())) {
-                    // 成立结盟
+                    // Form alliance if not already allied
                     if (!playerA.isAlliedWith(pB)) {
                         playerA.addAlly(pB);
                         playerB.addAlly(pA);
-                        // 打印并广播
                         System.out.println("Alliance formed between "
                                 + playerA.getName() + " and " + playerB.getName());
                         game.broadcast("Alliance formed between "
@@ -179,9 +177,8 @@ public class OrderExecutor {
         }
     }
 
-
     // ===================================
-    // 3) Attack
+    // 3) Attack Orders
     // ===================================
     public void executeAttackOrders() {
         List<AttackOrder> attacks = new ArrayList<>();
@@ -191,7 +188,7 @@ public class OrderExecutor {
             }
         }
 
-        // 先检测并破盟
+        // First, handle alliance breaking and recall troops
         for (AttackOrder ao : attacks) {
             Player attacker = game.getPlayer(ao.getPlayerID());
             Territory dest = game.getTerritoryByName(ao.getDestName());
@@ -199,12 +196,12 @@ public class OrderExecutor {
 
             Player defender = dest.getOwner();
             if (defender != null && attacker.isAlliedWith(defender.getId())) {
-                // 破盟 + 撤回
+                // Break alliance and recall defender's troops
                 breakAllianceAndRecall(attacker, defender);
             }
         }
 
-        // 再做普通攻击
+        // Then process standard attacks
         for (AttackOrder ao : attacks) {
             if (!validateAttack(ao)) {
                 continue;
@@ -215,16 +212,16 @@ public class OrderExecutor {
             int level = ao.getLevel();
             int units = ao.getNumUnits();
 
-            // 花费粮食
+            // Spend food for attack
             int costFood = units;
             if (!attacker.spendFood(costFood)) {
                 continue;
             }
-            // 从src移除
+            // Remove units from source
             if (!src.removeUnits(attacker.getId(), level, units)) {
                 continue;
             }
-            // 进行战斗
+            // Resolve combat
             resolveCombat(dest, attacker, level, units);
         }
     }
@@ -244,19 +241,16 @@ public class OrderExecutor {
     }
 
     /**
-     * 简化版 resolveCombat:
-     * 仅考虑 defender.owner 的单位 vs attacker
-     * 若 defender 领地上还驻有第三方部队，根据需求可再处理
+     * Simplified combat resolution: handles combat between the attacker and the current territory owner.
+     * Additional third-party garrisons are not considered here but can be added if needed.
      */
     private void resolveCombat(Territory dest, Player attacker, int attLevel, int attCount) {
         Player defender = dest.getOwner();
-        // defenderUnits => 仅 defender.id
         List<UnitInfo> defUnits = gatherUnits(dest, defender.getId());
-        // attackerUnits
         List<UnitInfo> attUnits = new ArrayList<>();
         attUnits.add(new UnitInfo(attLevel, UNIT_BONUS[attLevel], attCount));
 
-        // 投骰子
+        // Conduct D20-based combat with bonuses
         while (!attUnits.isEmpty() && !defUnits.isEmpty()) {
             UnitInfo aHigh = getHighestBonus(attUnits);
             UnitInfo dLow = getLowestBonus(defUnits);
@@ -265,14 +259,10 @@ public class OrderExecutor {
                 int defRoll = DiceRoller.rollD20() + dLow.bonus;
                 if (atkRoll > defRoll) {
                     dLow.count--;
-                    if (dLow.count <= 0) {
-                        defUnits.remove(dLow);
-                    }
+                    if (dLow.count <= 0) defUnits.remove(dLow);
                 } else {
                     aHigh.count--;
-                    if (aHigh.count <= 0) {
-                        attUnits.remove(aHigh);
-                    }
+                    if (aHigh.count <= 0) attUnits.remove(aHigh);
                 }
             }
             if (attUnits.isEmpty() || defUnits.isEmpty()) break;
@@ -284,48 +274,36 @@ public class OrderExecutor {
                 int defRoll = DiceRoller.rollD20() + dHigh.bonus;
                 if (atkRoll > defRoll) {
                     dHigh.count--;
-                    if (dHigh.count <= 0) {
-                        defUnits.remove(dHigh);
-                    }
+                    if (dHigh.count <= 0) defUnits.remove(dHigh);
                 } else {
                     aLow.count--;
-                    if (aLow.count <= 0) {
-                        attUnits.remove(aLow);
-                    }
+                    if (aLow.count <= 0) attUnits.remove(aLow);
                 }
             }
         }
 
         if (defUnits.isEmpty()) {
-            // attacker wins
+            // Attacker conquers the territory
             game.broadcast(attacker.getName() + " conquered " + dest.getName());
             dest.setOwner(attacker);
-            // 清空 defender 的驻军
             dest.removeAllUnitsOfPlayer(defender.getId());
-            // attacker驻军
             for (UnitInfo info : attUnits) {
-                if (info.count > 0) {
-                    dest.addUnits(attacker.getId(), info.level, info.count);
-                }
+                if (info.count > 0) dest.addUnits(attacker.getId(), info.level, info.count);
             }
             defender.removeTerritory(dest);
             attacker.addTerritory(dest);
         } else {
-            // defender wins
+            // Defender holds the territory
             game.broadcast(defender.getName() + " defends " + dest.getName() + " successfully");
-            // 清空 attacker 的驻军(这块地的)
             dest.removeAllUnitsOfPlayer(attacker.getId());
-            // 把防守剩余单位重新放回
-            dest.removeAllUnitsOfPlayer(defender.getId()); // 先清空
+            dest.removeAllUnitsOfPlayer(defender.getId());
             for (UnitInfo info : defUnits) {
-                if (info.count > 0) {
-                    dest.addUnits(defender.getId(), info.level, info.count);
-                }
+                if (info.count > 0) dest.addUnits(defender.getId(), info.level, info.count);
             }
         }
     }
 
-    // 收集Territory中指定playerID的所有单位
+    // Gather all stationed units of a specific player in a territory
     private List<UnitInfo> gatherUnits(Territory terr, int playerID) {
         List<UnitInfo> list = new ArrayList<>();
         Map<Integer,Integer> map = terr.getStationedUnitsMap(playerID);
@@ -340,18 +318,14 @@ public class OrderExecutor {
     private UnitInfo getHighestBonus(List<UnitInfo> list) {
         UnitInfo best = null;
         for (UnitInfo u : list) {
-            if (best == null || u.bonus > best.bonus) {
-                best = u;
-            }
+            if (best == null || u.bonus > best.bonus) best = u;
         }
         return best;
     }
     private UnitInfo getLowestBonus(List<UnitInfo> list) {
         UnitInfo worst = null;
         for (UnitInfo u : list) {
-            if (worst == null || u.bonus < worst.bonus) {
-                worst = u;
-            }
+            if (worst == null || u.bonus < worst.bonus) worst = u;
         }
         return worst;
     }
@@ -368,7 +342,7 @@ public class OrderExecutor {
     }
 
     // ===================================
-    // 4) Upgrade
+    // 4) Upgrade Orders
     // ===================================
     public void executeUpgradeOrders() {
         for (Order o : game.getAllOrders()) {
@@ -388,11 +362,8 @@ public class OrderExecutor {
                 if (cost < 0) continue;
                 if (!p.spendTech(cost)) continue;
 
-                // remove old
-                if (!t.removeUnits(p.getId(), uo.getCurrentLevel(), needUnits)) {
-                    continue;
-                }
-                // add new
+                // Remove old-level units and add upgraded units
+                if (!t.removeUnits(p.getId(), uo.getCurrentLevel(), needUnits)) continue;
                 t.addUnits(p.getId(), uo.getTargetLevel(), needUnits);
             }
         }
@@ -418,14 +389,14 @@ public class OrderExecutor {
     }
 
     // ===================================
-    // 破盟 & 撤军
+    // Break Alliance & Recall Troops
     // ===================================
     private void breakAllianceAndRecall(Player attacker, Player defender) {
         attacker.removeAlly(defender.getId());
         defender.removeAlly(attacker.getId());
         game.broadcast("Alliance broken due to attack! ("
                 + attacker.getName() + " -> " + defender.getName() + ")");
-        // 撤回 defender 驻扎在 attacker 领地上的部队
+        // Recall defender's units stationed on attacker's territories
         recallAlliedUnits(defender, attacker);
     }
 
@@ -452,6 +423,9 @@ public class OrderExecutor {
         }
     }
 
+    /**
+     * Picks a random territory from the given list
+     */
     private Territory pickOneTerritory(List<Territory> lands) {
         if (lands.isEmpty()) return null;
         Random rd = game.getRandom();

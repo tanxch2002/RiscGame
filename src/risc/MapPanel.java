@@ -4,10 +4,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 
-/** 绘制客户端地图的面板  */
+/** Panel for rendering the client-side game map */
 public class MapPanel extends JPanel {
 
-    /* 固定布局：领地中心坐标 */
+    /**
+     * Fixed layout: center coordinates for each territory
+     */
     public static final Map<String, Point> territoryPositions = new HashMap<>();
     static {
         territoryPositions.put("A", new Point(100, 150));
@@ -31,7 +33,10 @@ public class MapPanel extends JPanel {
         setBackground(Color.WHITE);
     }
 
-    /* -------- 外部 API -------- */
+    /* -------- External API -------- */
+    /**
+     * Update the map data with new territory information
+     */
     public void updateMapData(Map<String, ClientTerritoryData> data) {
         data.forEach((n, d) -> {
             Point p = territoryPositions.getOrDefault(n,
@@ -39,21 +44,27 @@ public class MapPanel extends JPanel {
             d.x = p.x; d.y = p.y;
         });
         this.terrs = data;
-        revalidate();        // 让 JScrollPane 重新计算
+        revalidate();        // Ask JScrollPane to re-layout
         repaint();
     }
 
+    /**
+     * Add a move order to render
+     */
     public void addMoveOrder(MoveOrder o) {
         moves.add(o);
         repaint();
     }
 
+    /**
+     * Clear all rendered move orders
+     */
     public void clearMoveOrders() {
         moves.clear();
         repaint();
     }
 
-    /* ====================== 绘制 ====================== */
+    /* ====================== Rendering ====================== */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -71,6 +82,9 @@ public class MapPanel extends JPanel {
         drawMoves(g2);
     }
 
+    /**
+     * Draws a legend explaining map symbols
+     */
     private void drawLegend(Graphics2D g) {
         int x = 20, y = 20;
         g.drawString("Legend:", x, y);
@@ -79,6 +93,9 @@ public class MapPanel extends JPanel {
         g.drawString("Arrow = Move", x, y + 45);
     }
 
+    /**
+     * Draw network links between adjacent territories
+     */
     private void drawLinks(Graphics2D g) {
         g.setColor(Color.GRAY);
         g.setStroke(new BasicStroke(2));
@@ -94,22 +111,25 @@ public class MapPanel extends JPanel {
         }));
     }
 
+    /**
+     * Draw each territory as a colored circle with labels and unit counts
+     */
     private void drawTerritories(Graphics2D g) {
         for (ClientTerritoryData t : terrs.values()) {
             int r = t.radius, x = t.x, y = t.y;
 
-            /* 圆形 & 边框 */
+            // Fill circle and draw border
             g.setColor(t.ownerColor);
             g.fillOval(x - r, y - r, 2 * r, 2 * r);
             g.setColor(Color.BLACK);
             g.drawOval(x - r, y - r, 2 * r, 2 * r);
 
-            /* 领地名 */
+            // Draw territory name above circle
             g.setFont(NAME_FONT);
             FontMetrics fmN = g.getFontMetrics();
             g.drawString(t.name, x - fmN.stringWidth(t.name) / 2, y - r - 4);
 
-            /* 圆内显示 Owner */
+            // Display owner name inside circle
             g.setFont(getFont());
             FontMetrics fm = g.getFontMetrics();
             Color txtCol = isDark(t.ownerColor) ? Color.WHITE : Color.BLACK;
@@ -117,7 +137,7 @@ public class MapPanel extends JPanel {
             g.drawString(t.ownerName, x - fm.stringWidth(t.ownerName) / 2, y);
             g.setColor(Color.BLACK);
 
-            /* 圆下按玩家显示部队 */
+            // Below circle, list unit counts by player
             int offsetY = y + r + fm.getAscent();
             for (Map.Entry<String, Map<Integer, Integer>> e : t.unitsByPlayer.entrySet()) {
                 StringBuilder sb = new StringBuilder(e.getKey()).append(": ");
@@ -133,6 +153,9 @@ public class MapPanel extends JPanel {
         }
     }
 
+    /**
+     * Draw arrows and labels for move orders
+     */
     private void drawMoves(Graphics2D g) {
         if (moves.isEmpty()) return;
         g.setColor(Color.MAGENTA);
@@ -149,6 +172,9 @@ public class MapPanel extends JPanel {
         }
     }
 
+    /**
+     * Draws an arrow from (x1,y1) to (x2,y2)
+     */
     private void drawArrow(Graphics2D g, int x1, int y1, int x2, int y2) {
         g.drawLine(x1, y1, x2, y2);
         double phi = Math.toRadians(30);
@@ -162,6 +188,9 @@ public class MapPanel extends JPanel {
         }
     }
 
+    /**
+     * Determines if a color is dark based on its luminance
+     */
     private boolean isDark(Color c) {
         double d = 1 - (0.299 * c.getRed()
                 + 0.587 * c.getGreen()

@@ -69,9 +69,7 @@ public class Game {
         orderExecutor.executeAttackOrders();
     }
 
-    // NEW: 结盟处理
     public void executeAllAlliances() {
-        // 只有玩家数≥3才可能结盟
         if (players.size() >= 3) {
             orderExecutor.executeAllianceOrders();
         }
@@ -87,7 +85,6 @@ public class Game {
     }
 
     public void endTurn() {
-        // 完成科技升级、资源产出、自动产兵
         for (Player p : players) {
             if (p.isTechUpgrading()) {
                 p.finishTechUpgrade();
@@ -98,8 +95,6 @@ public class Game {
             for (Territory t : p.getTerritories()) {
                 totalFood += t.getFoodProduction();
                 totalTech += t.getTechProduction();
-                // NEW: 多家驻军 => 默认只给地块owner增加单位
-                // 这里若想让owner自动+1级0兵，可:
                 t.addUnits(p.getId(), 0, 1);
             }
             p.addFood(totalFood);
@@ -108,13 +103,11 @@ public class Game {
     }
 
     public void updatePlayerStatus() {
-        // 若领地数=0 => 死亡
         for (Player p : players) {
             if (p.getTerritories().isEmpty()) {
                 p.setAlive(false);
             }
         }
-        // 检测是否只剩1家
         List<Player> alivePlayers = new ArrayList<>();
         for (Player p : players) {
             if (p.isAlive()) {
@@ -125,7 +118,6 @@ public class Game {
             this.winnerExists = true;
             this.winner = alivePlayers.get(0);
         }
-        // 或者有人独占全部地块
         for (Player p : alivePlayers) {
             if (p.getTerritories().size() == territories.size()) {
                 this.winnerExists = true;

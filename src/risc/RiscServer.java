@@ -17,7 +17,6 @@ public class RiscServer {
     private static final String BOT_NAME = "DeepSeekBot";
     private boolean started = false;
 
-
     public RiscServer(int desiredHumanPlayers, String gameID, boolean includeAI) {
         this.desiredHumanPlayers = desiredHumanPlayers;
         this.gameID = gameID;
@@ -29,7 +28,7 @@ public class RiscServer {
     }
 
     /* ================================================= */
-    /*                  客户端接入                       */
+    /*              Client Connection Handling          */
     /* ================================================= */
     public synchronized void addNewClient(Socket socket, PlayerAccount account) {
         if (started) {
@@ -45,7 +44,7 @@ public class RiscServer {
     }
 
     /* ================================================= */
-    /*                   主循环启动                      */
+    /*                Main Loop Startup                 */
     /* ================================================= */
     public void startServerLogic() {
         Thread t = new Thread(() -> {
@@ -64,19 +63,19 @@ public class RiscServer {
     }
 
     /* ================================================= */
-    /*                    游戏流程                       */
+    /*                    Game Flow                     */
     /* ================================================= */
     private void startGame() {
         int totalPlayers = desiredHumanPlayers + (includeAI ? 1 : 0);
         game.initPlayers(totalPlayers);
 
-        // Set human player names
+        // Assign human player names
         for (int i = 0; i < clientHandlers.size(); i++) {
             Player p = game.getPlayer(i);
             p.setName(clientHandlers.get(i).getAccount().getUsername());
         }
 
-        // If AI is enabled, set up the bot
+        // Add AI bot if enabled
         if (includeAI) {
             int botID = totalPlayers - 1;
             Player prev = game.getPlayer(botID);
@@ -92,12 +91,12 @@ public class RiscServer {
 
         broadcastMessage("All players connected. " + (includeAI ? "Including AI. " : "")
                 + "Each player has " + game.getInitialUnits() + " initial units.\n");
-        broadcastMessage("每位玩家拥有 " + game.getInitialUnits() + " 个初始单位进行部署。\n");
+        broadcastMessage("Each player has " + game.getInitialUnits() + " initial units to deploy.\n");
 
-        /* ---------- 初始布兵阶段 ---------- */
+        /* ---------- Initial Placement Phase ---------- */
         gamePhaseInitialPlacement();
 
-        /* ---------- 主回合循环 ---------- */
+        /* ---------- Main Turn Loop ---------- */
         while (!game.hasWinner()) {
             broadcastMessage("\n=== New Turn Begins ===\n");
             for (ClientHandler ch : clientHandlers) {
@@ -111,23 +110,23 @@ public class RiscServer {
 
             issueOrdersPhase();
 
-            /* 执行顺序保持不变 */
+            // Execute phases in fixed order
             game.executeAllMoveOrders();
             game.executeAllAttackOrders();
             game.executeAllAlliances();
             game.executeAllUpgrades();
 
-            /* ------------- 新增：广播 AI 资源 ------------- */
+            /* ------- New: Broadcast AI resources ------- */
             Player aiPlayer = game.getAllPlayers()
                     .stream()
                     .filter(Player::isAI)
                     .findFirst()
                     .orElse(null);
             if (aiPlayer != null && aiPlayer.isAlive()) {
-                broadcastMessage("DeepSeekBot 当前资源 -> Food: "
+                broadcastMessage("DeepSeekBot current resources -> Food: "
                         + aiPlayer.getFood() + ", Tech: " + aiPlayer.getTech());
             }
-            /* ------------------------------------------- */
+            /* ------------------------------------------ */
 
             game.clearAllOrders();
 
@@ -146,12 +145,12 @@ public class RiscServer {
         closeAllConnections();
     }
 
-    /* ---------- 初始布兵 ---------- */
+    /* ---------- Initial Placement Phase ---------- */
     private void gamePhaseInitialPlacement() {
         broadcastMessage("Initial placement phase starts...");
         List<Thread> threads = new ArrayList<>();
 
-        /* 人类玩家线程 */
+        // Human players place initial units
         for (ClientHandler ch : clientHandlers) {
             if (!game.getPlayer(ch.getPlayerID()).isAlive()) continue;
             Thread th = new Thread(() -> {
@@ -162,24 +161,24 @@ public class RiscServer {
             th.start();
         }
 
-        /* AI 玩家同步布兵（不占线程） */
+        // AI placement
         if (includeAI) {
             aiController.doInitialPlacement();
         }
 
-        /* 等待人类完成 */
+        // Wait for humans to finish
         for (Thread th : threads) {
             try { th.join(); } catch (InterruptedException ignored) {}
         }
         broadcastMessage("Initial placement completed.\nCurrent map state:\n" + game.getMapState());
     }
 
-    /* ---------- 命令阶段 ---------- */
+    /* ---------- Order Issuing Phase ---------- */
     private void issueOrdersPhase() {
         broadcastMessage("Enter command: (M)ove, (A)ttack, (U)pgrade, (T)ech, (D)one, (C)hat, (FA)lliance.\n");
         List<Thread> threads = new ArrayList<>();
 
-        /* 人类玩家 */
+        // Human players issue orders
         for (ClientHandler ch : clientHandlers) {
             if (!game.getPlayer(ch.getPlayerID()).isAlive()) continue;
             Thread th = new Thread(() -> {
@@ -190,19 +189,17 @@ public class RiscServer {
             th.start();
         }
 
-        /* 等人类全部完成，再让 AI 决策（便于 AI 知道对手动作） */
+        // Wait for all humans, then AI
         for (Thread th : threads) {
             try { th.join(); } catch (InterruptedException ignored) {}
         }
 
-        /* AI 出招 */
         if(includeAI && aiController != null) {
             aiController.generateTurnOrders();
         }
-
     }
 
-    /* ---------- 移除阵亡人类玩家 ---------- */
+    /* ---------- Remove Eliminated Human Players ---------- */
     private void removeDeadPlayers() {
         Iterator<ClientHandler> it = clientHandlers.iterator();
         while (it.hasNext()) {
@@ -215,7 +212,7 @@ public class RiscServer {
         }
     }
 
-    /* ---------- 广播 & 连接管理 ---------- */
+    /* ---------- Broadcast & Connection Management ---------- */
     public void broadcastMessage(String msg) {
         for (ClientHandler ch : clientHandlers) {
             ch.sendMessage(msg);

@@ -2,6 +2,9 @@ package risc;
 
 import java.util.*;
 
+/**
+ * Represents a game player, managing their state, resources, territories, and alliances.
+ */
 public class Player {
     private final int id;
     private String name;
@@ -15,7 +18,7 @@ public class Player {
     private boolean isTechUpgrading = false;
     private int nextTechLevel = 1;
 
-    // NEW: 结盟关系
+    // Alliance relationships
     private final Set<Integer> allies;
 
     public Player(int id, String name) {
@@ -28,15 +31,15 @@ public class Player {
         this.allies = new HashSet<>();
     }
 
-    /* ---------- 基本信息 ---------- */
+    /* ---------- Basic Information ---------- */
     public int getId() { return id; }
     public String getName() { return name; }
     public void setName(String newName) { this.name = newName; }
 
-    /* ---------- AI 标识：默认为真人 ---------- */
+    /* ---------- AI Identification: default is human ---------- */
     public boolean isAI() { return false; }
 
-    /* ---------- 生存状态 & 领地 ---------- */
+    /* ---------- Survival State & Territories ---------- */
     public boolean isAlive() { return alive; }
     public void setAlive(boolean alive) { this.alive = alive; }
 
@@ -44,7 +47,7 @@ public class Player {
     public void addTerritory(Territory t) { if (!territories.contains(t)) territories.add(t); }
     public void removeTerritory(Territory t) { territories.remove(t); }
 
-    /* ---------- 资源 ---------- */
+    /* ---------- Resources ---------- */
     public int getFood() { return food; }
     public int getTech() { return tech; }
     public void addFood(int delta) { this.food += delta; }
@@ -52,13 +55,16 @@ public class Player {
     public boolean spendFood(int amt) { if (food < amt) return false; food -= amt; return true; }
     public boolean spendTech(int amt) { if (tech < amt) return false; tech -= amt; return true; }
 
-    /* ---------- 科技 ---------- */
+    /* ---------- Technology ---------- */
     public int getMaxTechLevel() { return maxTechLevel; }
     public boolean isTechUpgrading() { return isTechUpgrading; }
     public void startTechUpgrade(int nextLevel) { isTechUpgrading = true; nextTechLevel = nextLevel; }
-    public void finishTechUpgrade() { isTechUpgrading = false; maxTechLevel = nextTechLevel; }
+    public void finishTechUpgrade() {
+        isTechUpgrading = false;
+        maxTechLevel = nextTechLevel;
+    }
 
-    /* ---------- 结盟 ---------- */
+    /* ---------- Alliances ---------- */
     public void addAlly(int otherID) { allies.add(otherID); }
     public void removeAlly(int otherID) { allies.remove(otherID); }
     public boolean isAlliedWith(int otherID) { return allies.contains(otherID); }

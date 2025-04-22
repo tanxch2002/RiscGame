@@ -9,16 +9,18 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.*;
 
-/** Swing 客户端 GUI   */
+/**
+ * Swing-based client GUI for RISC game
+ */
 public class RiscClientGUI extends JFrame {
 
-    /* -------- UI 元件 -------- */
+    /* -------- UI Components -------- */
     private JTextArea textArea;
     private MapPanel mapPanel;
     private JTextField inputField;
     private JButton sendBtn, connectBtn;
 
-    /* -------- 网络 -------- */
+    /* -------- Networking -------- */
     private Socket sock;
     private BufferedReader in;
     private PrintWriter out;
@@ -26,13 +28,13 @@ public class RiscClientGUI extends JFrame {
     private String host = "localhost";
     private int    port = 12345;
 
-    /* -------- 颜色映射 -------- */
+    /* -------- Color Mapping -------- */
     private static final Map<String, Color> playerColors = new HashMap<>();
     private static final Color[] palette = {
             Color.BLUE, Color.RED, Color.GREEN, Color.ORANGE, Color.MAGENTA, Color.CYAN};
     private static int colorIdx = 0;
 
-    /* -------- 正则 -------- */
+    /* -------- Regex Patterns -------- */
     private static final Pattern TERR_P  = Pattern.compile("^(\\w+)\\s*\\(([^)]+)\\)");
     private static final Pattern SIZE_P  = Pattern.compile("Size:\\s*(\\d+)\\s*,\\s*Neighbors:\\s*(.*)");
     private static final Pattern UNIT_P  = Pattern.compile("StationedUnits:\\s*(.*)");
@@ -49,15 +51,18 @@ public class RiscClientGUI extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    /**
+     * Returns a consistent color for each player tag
+     */
     private Color colorFor(String player) {
         if (player == null || player.equals("None")) return Color.LIGHT_GRAY;
         return playerColors.computeIfAbsent(player,
                 k -> palette[colorIdx++ % palette.length]);
     }
 
-    /* ====================== UI ====================== */
+    /* ====================== UI Construction ====================== */
     private void buildUI() {
-        /* ----- 上栏 host / port ----- */
+        /* ----- Top panel: host / port inputs ----- */
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JTextField hostF = new JTextField(host, 10);
         JTextField portF = new JTextField(String.valueOf(port), 5);
@@ -68,7 +73,7 @@ public class RiscClientGUI extends JFrame {
         top.add(portF);
         top.add(connectBtn);
 
-        /* ----- 地图 & 消息 ----- */
+        /* ----- Map & message display ----- */
         mapPanel = new MapPanel();
         JScrollPane mapScr = new JScrollPane(mapPanel);
         mapScr.setBorder(BorderFactory.createTitledBorder("Game Map"));
@@ -82,7 +87,7 @@ public class RiscClientGUI extends JFrame {
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, mapScr, msgScr);
         split.setResizeWeight(0.75);
 
-        /* ----- 底栏输入 ----- */
+        /* ----- Bottom panel: input field ----- */
         inputField = new JTextField();
         sendBtn = new JButton("Send");
         sendBtn.setEnabled(false);
@@ -92,12 +97,12 @@ public class RiscClientGUI extends JFrame {
         bottom.add(inputField, BorderLayout.CENTER);
         bottom.add(sendBtn, BorderLayout.EAST);
 
-        /* ----- 布局 ----- */
+        /* ----- Layout ----- */
         add(top, BorderLayout.NORTH);
         add(split, BorderLayout.CENTER);
         add(bottom, BorderLayout.SOUTH);
 
-        /* ----- 监听 ----- */
+        /* ----- Event Listeners ----- */
         connectBtn.addActionListener(e -> {
             host = hostF.getText().trim();
             try {
@@ -115,7 +120,7 @@ public class RiscClientGUI extends JFrame {
         inputField.addActionListener(sendAct);
     }
 
-    /* ====================== 网络 ====================== */
+    /* ====================== Networking ====================== */
     private void connect() {
         try {
             if (sock != null && !sock.isClosed()) sock.close();
@@ -150,7 +155,7 @@ public class RiscClientGUI extends JFrame {
         });
     }
 
-    /* ====================== 地图辅助 ====================== */
+    /* ====================== Map Initialization ====================== */
     private void initMap() {
         Map<String, ClientTerritoryData> init = new HashMap<>();
         MapPanel.territoryPositions.forEach((n, p) ->
@@ -158,7 +163,7 @@ public class RiscClientGUI extends JFrame {
         SwingUtilities.invokeLater(() -> mapPanel.updateMapData(init));
     }
 
-    /* ====================== 读取线程 ====================== */
+    /* ====================== Reader Thread ====================== */
     private void reader() {
         try {
             boolean reading = false;
@@ -168,7 +173,7 @@ public class RiscClientGUI extends JFrame {
             String line;
             while ((line = in.readLine()) != null) {
 
-                /* ----- Move 信息 ----- */
+                /* ----- Move info parsing ----- */
                 Matcher mv = MOVE_P.matcher(line);
                 if (mv.find()) {
                     mapPanel.addMoveOrder(new MoveOrder(
@@ -179,7 +184,7 @@ public class RiscClientGUI extends JFrame {
                     continue;
                 }
 
-                /* ----- MapState 标记 ----- */
+                /* ----- MapState markers ----- */
                 if (line.contains("===== Current Map State")) {
                     reading = true; tmp.clear(); cur = null;
                     log(line + "\n");
@@ -199,7 +204,7 @@ public class RiscClientGUI extends JFrame {
                     Matcher mSize = SIZE_P.matcher(t);
                     Matcher mUnit = UNIT_P.matcher(t);
 
-                    /* --- 领地行 --- */
+                    /* --- Territory line --- */
                     if (mTerr.matches()) {
                         String name  = mTerr.group(1);
                         String owner = mTerr.group(2);
@@ -212,7 +217,7 @@ public class RiscClientGUI extends JFrame {
                         cur.neighborNames.clear();
                         cur.unitsByPlayer.clear();
                     }
-                    /* --- Size / 邻接 --- */
+                    /* --- Size / neighbors --- */
                     else if (mSize.matches() && cur != null) {
                         cur.size = Integer.parseInt(mSize.group(1));
                         cur.neighborNames.clear();

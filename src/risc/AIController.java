@@ -5,8 +5,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 将 DeepSeek 模型输出转成具体 Order 并注入 Game，
- * 并在每回合结束时广播 AI 玩家本回合的全部指令。
+ * Convert DeepSeek model output into concrete Orders and inject them into the Game,
+ * and broadcast all commands of the AI player at the end of each turn.
  */
 public class AIController {
 
@@ -14,7 +14,7 @@ public class AIController {
     private final AIPlayer ai;
     private final DeepSeekClient client = new DeepSeekClient();
 
-    /* 指令正则 */
+    // Command regex patterns
     private static final Pattern MOVE_P = Pattern.compile("^M\\s+(\\w+)\\s+(\\w+)\\s+(\\d+)\\s+(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ATT_P  = Pattern.compile("^A\\s+(\\w+)\\s+(\\w+)\\s+(\\d+)\\s+(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern UPG_P  = Pattern.compile("^U\\s+(\\w+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d+)", Pattern.CASE_INSENSITIVE);
@@ -26,7 +26,7 @@ public class AIController {
         this.ai   = ai;
     }
 
-    /* -------- 初始布兵（平均分配示例） -------- */
+    /* -------- Initial Placement (Equal Distribution Example) -------- */
     public void doInitialPlacement() {
         int remain = game.getInitialUnits();
         List<Territory> lands = ai.getTerritories();
@@ -36,10 +36,10 @@ public class AIController {
             int put = per + (extra-- > 0 ? 1 : 0);
             t.addUnits(ai.getId(), 0, put);
         }
-        game.broadcast("DeepSeekBot 已完成初始布兵。");
+        game.broadcast("DeepSeekBot has completed the initial placement.");
     }
 
-    /* -------- 每回合生成指令并统一广播 -------- */
+    /* -------- Generate Turn Orders and Broadcast -------- */
     public void generateTurnOrders() {
         String prompt = buildPrompt();
         final int MAX_RETRIES = 3;
@@ -51,19 +51,19 @@ public class AIController {
             String reply = client.chat(prompt);
             lines = parseContent(reply);
 
-            // 检查是否包含终止标记 D
+            // Check for end-of-commands marker 'D'
             boolean hasDoneMarker = lines.stream().anyMatch(ln -> ln.equalsIgnoreCase("D"));
             if (!hasDoneMarker) {
-                game.broadcast("DeepSeekBot 未在指令末尾输出 D，重新生成指令（第 " + attempt + " 次尝试）…");
+                game.broadcast("DeepSeekBot did not output 'D' at the end of commands, regenerating commands (attempt " + attempt + ")...");
                 continue;
             }
 
-            // 解析并应用指令
+            // Parse and apply commands
             List<String> accepted = new ArrayList<>();
             for (String ln : lines) {
                 String t = ln.trim();
                 if (t.equalsIgnoreCase("D")) {
-                    // 正常遇到 D 就停止读取后续行
+                    // Stop reading further lines on 'D'
                     break;
                 }
                 if (applyLine(t)) {
@@ -71,24 +71,22 @@ public class AIController {
                 }
             }
 
-            // 广播最终采纳的指令
+            // Broadcast accepted commands
             if (!accepted.isEmpty()) {
-                StringBuilder msg = new StringBuilder("【DeepSeekBot 指令】\n");
-                accepted.forEach(l -> msg.append("  ").append(l).append('\n'));
+                StringBuilder msg = new StringBuilder("[DeepSeekBot Orders]\n");
+                accepted.forEach(l -> msg.append("  ").append(l).append("\n"));
                 game.broadcast(msg.toString());
             } else {
-                game.broadcast("DeepSeekBot 本回合未生成任何可执行指令，仅输出了 D。");
+                game.broadcast("DeepSeekBot did not generate any executable commands this turn; only 'D' was output.");
             }
             return;
         }
 
-        // 重试多次仍不合格时，跳过本回合
-        game.broadcast("DeepSeekBot 多次未按格式输出 D，跳过本回合指令。");
+        // Skip turn if retries exhausted
+        game.broadcast("DeepSeekBot failed to output 'D' correctly after multiple attempts; skipping orders for this turn.");
     }
 
-
-
-    /* -------- Prompt 生成 -------- */
+    /* -------- Prompt Generation -------- */
     private String buildPrompt() {
         StringBuilder sb = new StringBuilder();
         // 基本指令说明
@@ -149,7 +147,6 @@ public class AIController {
                 .append("1. **部队升级**：Level0→1:3；1→2:8；2→3:19；3→4:25；4→5:35；5→6:50，可跨级按差价一次完成。\n")
                 .append("2. **科技升级**：1→2:50；2→3:75；3→4:125；4→5:200；5→6:300，下回合生效。\n\n")
                 .append("------\n\n")
-                // 最后再附上指令格式
                 .append("===合法指令格式===\n")
                 .append("请在同一回合中，依次输出若干行命令，最后一行必须是 `D`，表示结束下令。生成以下命令时，")
                 .append("务必先确认你拥有足够的 Food 或 Tech：\n\n")
@@ -166,8 +163,7 @@ public class AIController {
         return sb.toString();
     }
 
-
-    /* -------- 解析 DeepSeek JSON，为演示仅做字符串切割 -------- */
+    /* -------- Parse DeepSeek JSON; for demonstration only perform string splitting -------- */
     private List<String> parseContent(String json) {
         int idx = json.indexOf("\"content\"");
         if (idx < 0) return List.of();
@@ -183,7 +179,7 @@ public class AIController {
                 .toList();
     }
 
-    /* -------- 把单行文本转成 Order 注入 Game -------- */
+    /* -------- Convert a single line of text into an Order and inject into Game -------- */
     private boolean applyLine(String ln) {
         Matcher m;
         if ((m = MOVE_P.matcher(ln)).matches()) {
@@ -216,6 +212,6 @@ public class AIController {
             game.addOrder(new AllianceOrder(ai.getId(), m.group(1)));
             return true;
         }
-        return false; // 未识别
+        return false; // Unrecognized command
     }
 }

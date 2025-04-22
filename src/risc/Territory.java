@@ -2,13 +2,17 @@ package risc;
 
 import java.util.*;
 
+/**
+ * Represents a territory on the game map, with an owner, neighbors, size,
+ * and stationed units for multiple players at different levels.
+ */
 public class Territory {
     private final String name;
-    private Player owner; // 地块归属
+    private Player owner; // Territory owner
     private final List<Territory> neighbors;
     private int size;
 
-    // NEW: 多家单位共存 => playerID -> (unitLevel -> count)
+    // Stationed units: playerID -> (unitLevel -> count)
     private final Map<Integer, Map<Integer, Integer>> stationedUnits;
 
     public Territory(String name) {
@@ -52,6 +56,9 @@ public class Territory {
         }
     }
 
+    /**
+     * Returns neighbor names separated by spaces.
+     */
     public String neighborsString() {
         StringBuilder sb = new StringBuilder();
         for (Territory t : neighbors) {
@@ -60,12 +67,16 @@ public class Territory {
         return sb.toString().trim();
     }
 
-    // NEW: 取得指定player的驻军情况
+    /**
+     * Returns the map of unit counts for a specific player.
+     */
     public Map<Integer,Integer> getStationedUnitsMap(int playerID) {
         return stationedUnits.getOrDefault(playerID, new HashMap<>());
     }
 
-    // NEW: 增加若干单位
+    /**
+     * Adds units of a given level for a player.
+     */
     public void addUnits(int playerID, int level, int count) {
         if (count <= 0) return;
         stationedUnits.putIfAbsent(playerID, new HashMap<>());
@@ -73,7 +84,10 @@ public class Territory {
         levelMap.put(level, levelMap.getOrDefault(level, 0) + count);
     }
 
-    // NEW: 移除若干单位
+    /**
+     * Removes a specified number of units of a given level for a player.
+     * @return true if removal succeeded, false otherwise.
+     */
     public boolean removeUnits(int playerID, int level, int count) {
         Map<Integer,Integer> levelMap = stationedUnits.get(playerID);
         if (levelMap == null) {
@@ -95,11 +109,17 @@ public class Territory {
         return true;
     }
 
-    // NEW: 移除playerID在此地的全部驻军 => 返回移除的(等级->数量)
+    /**
+     * Removes all units of a player from this territory.
+     * @return map of removed (level -> count) or null if none.
+     */
     public Map<Integer,Integer> removeAllUnitsOfPlayer(int playerID) {
         return stationedUnits.remove(playerID);
     }
 
+    /**
+     * Returns the total number of units from all players in this territory.
+     */
     public int getTotalUnits() {
         int sum = 0;
         for (Map<Integer, Integer> levelMap : stationedUnits.values()) {
@@ -110,20 +130,28 @@ public class Territory {
         return sum;
     }
 
+    /**
+     * Food production per turn, equal to territory size.
+     */
     public int getFoodProduction() {
         return size;
     }
 
+    /**
+     * Tech production per turn, equal to territory size.
+     */
     public int getTechProduction() {
         return size;
     }
 
-    // NEW: 用于打印查看
+    /**
+     * Returns a string representation of all stationed units for debugging.
+     * Example: "P0->{0=5,1=2}; P1->{0=3}".
+     */
     public String stationedUnitsString() {
-        // eg: "P0->{0=5,1=2}, P1->{0=3}"
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<Integer, Map<Integer,Integer>> e : stationedUnits.entrySet()) {
-            sb.append("P").append(e.getKey()).append("->").append(e.getValue()).append(" ; ");
+            sb.append("P").append(e.getKey()).append("->").append(e.getValue()).append("; ");
         }
         if (sb.length() == 0) {
             sb.append("No units");

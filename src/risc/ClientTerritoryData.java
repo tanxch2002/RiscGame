@@ -11,10 +11,7 @@ public class ClientTerritoryData {
     public String ownerName = "None";
     public Color ownerColor = Color.LIGHT_GRAY;
 
-    /**
-     * unitsByPlayer → playerTag (e.g. "P0") → (level → count)
-     * GUI 依赖服务端打印格式：P0->{0=5,1=2}
-     */
+
     public final Map<String, Map<Integer, Integer>> unitsByPlayer = new HashMap<>();
 
     public final List<String> neighborNames = new ArrayList<>();

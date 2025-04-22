@@ -5,9 +5,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-/**
- * 极简 DeepSeek 大模型 HTTP 调用封装。
- */
+
 public class DeepSeekClient {
     private static final String ENDPOINT = "https://api.deepseek.com/chat/completions";
     private static final String API_KEY = System.getenv("DEEPSEEK_API_KEY");
@@ -32,7 +30,6 @@ public class DeepSeekClient {
                     .build();
 
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            // 这里只做演示，实际需检查 statusCode 与 JSON 解析
             return resp.body();
         } catch (Exception e) {
             e.printStackTrace();
@@ -40,7 +37,6 @@ public class DeepSeekClient {
         }
     }
 
-    /* 把普通字符串包装成 JSON 字面量 */
     private String jsonEscape(String s) {
         return "\"" + s.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
